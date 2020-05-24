@@ -28,6 +28,7 @@
 #include "datathread.h"
 #include "msgbox.h"
 #include "msg.h"
+#include "chatroom.h"
 
 #define FAUX	0
 #define VRAI	1
