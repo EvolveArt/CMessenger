@@ -8,11 +8,14 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in *adrServ;
   int fin = FAUX;
   char ligne[LIGNE_MAX];
+  char username[LIGNE_MAX];
 
   signal(SIGPIPE, SIG_IGN);
 
-  if (argc != 3)
-    erreur("usage: %s machine port\n", argv[0]);
+  if (argc != 4)
+    erreur("usage: %s machine port username\n", argv[0]);
+
+  strcpy(username, argv[3]);
 
   printf("%s: creating a socket\n", CMD);
   sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -32,6 +35,9 @@ int main(int argc, char *argv[]) {
   ret = connect(sock, (struct sockaddr *)adrServ, sizeof(struct sockaddr_in));
   if (ret < 0)
     erreur_IO("connect");
+
+  if (ecrireLigne(sock, username) == -1)
+    erreur_IO("ecriture socket");
 
   while (!fin) {
     printf("ligne> ");
