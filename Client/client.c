@@ -4,13 +4,17 @@
 #define CMD   "client"
 
 void sendUsername(int fd, char* username);
+void *receiveMessage(void *arg);
+
+int sock;
 
 int main(int argc, char *argv[]) {
-  int sock, ret;
+  int ret;
   struct sockaddr_in *adrServ;
   int fin = FAUX;
   char ligne[LIGNE_MAX];
   char username[LIGNE_MAX];
+  pthread_t idThreadReceive; // thread qui gère la réception de messages des autres clients
 
   signal(SIGPIPE, SIG_IGN);
 
@@ -45,9 +49,12 @@ int main(int argc, char *argv[]) {
   }
   else
   {
+    // réception des messages
+    pthread_create(&idThreadReceive, NULL, receiveMessage, NULL);
+    //envoi des messages
     while (!fin)
     {
-      printf("ligne> ");
+      printf("> ");
       if (fgets(ligne, LIGNE_MAX, stdin) == NULL)
         // sortie par CTRL-D
         fin = VRAI;
@@ -74,4 +81,16 @@ void sendUsername(int fd, char* username)
 
   if (read(fd, username, sizeof(username)) == -1)
     erreur_IO("lecture socket");
+}
+
+void *receiveMessage(void *arg)
+{
+  char ligne[LIGNE_MAX];
+
+  while(1)
+  {
+    if (lireLigne(sock, ligne) == -1)
+      erreur_IO("lecture socket");
+    printf("%s\n", ligne);
+  }
 }

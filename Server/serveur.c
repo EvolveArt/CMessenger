@@ -9,7 +9,7 @@ void creerCohorteWorkers(void);
 int chercherWorkerLibre(void);
 void *threadWorker(void *arg);
 int checkUsername(int canal, char *username);
-void sessionClient(int canal);
+void sessionClient(int canal, char *username);
 int ecrireDansJournal(char *ligne);
 void remiseAZeroJournal(void);
 void lockMutexFdJournal(void);
@@ -149,7 +149,7 @@ void *threadWorker(void *arg) {
     {
       strcpy(dataSpec->username, username);
       printf("serveur : user %s added\n", dataSpec->username);
-      sessionClient(dataSpec->canal);
+      sessionClient(dataSpec->canal, dataSpec->username);
       strcpy(dataSpec->username, ""); //libération du username une fois que le client est parti
     }
     else
@@ -199,9 +199,11 @@ int checkUsername(int canal, char *username)
   return 1;
 }
 
-void sessionClient(int canal) {
+void sessionClient(int canal, char* username)
+{
   int fin = FAUX;
   char ligne[LIGNE_MAX];
+  char message[LIGNE_MAX] = "";
   int lgLue, lgEcr;
 
   while (!fin) {
@@ -211,22 +213,37 @@ void sessionClient(int canal) {
 
     else if (lgLue == 0) {  // arret du client (CTRL-D, interruption)
       fin = VRAI;
-      printf("%s: arret du client\n", CMD);
+      printf("%s: arret de %s\n", CMD, username);
     }
     else {  // lgLue > 0
       if (strcmp(ligne, "fin") == 0) {
         fin = VRAI;
-        printf("%s: fin session client\n", CMD);
+        printf("%s: fin session %s\n", CMD, username);
       }
       else if (strcmp(ligne, "init") == 0) {
         remiseAZeroJournal();
-        printf("%s: remise a zero du journal\n", CMD);
+        printf("%s: remise a zero du journal par %s\n", CMD, username);
       }
       else {
-        lgEcr = ecrireLigne(fdJournal, ligne);
+        strcpy(message, "");
+        strcat(message, username);
+        strcat(message, "> ");
+        strcat(message, ligne);
+        printf("%s\n", message);
+        lgEcr = ecrireLigne(fdJournal, message);
         if (lgEcr < 0)
           erreur_IO("ecriture journal");
-        printf("%s: ligne de %d octets ecrite dans journal\n", CMD, lgEcr);
+        printf("%s: ligne de %d octets ecrite dans journal par %s\n", CMD, lgEcr, username);
+
+        for (int i = 0; i < NB_WORKERS; ++i)
+        {
+          if (dataSpec[i].canal != -1 && dataSpec[i].username != username)
+          {
+            printf("On envoie le message sur le canal %d, celui de %s, chef!\n", dataSpec[i].canal, dataSpec[i].username);
+            if (ecrireLigne(dataSpec[i].canal, message) < 0)
+              erreur_IO("ecriture canal");
+          }
+        }
       }
     }
   }
