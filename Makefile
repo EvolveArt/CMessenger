@@ -1,6 +1,7 @@
 include Makefile.inc
 
 EXE = Server/serveur Client/client
+PSE_DIR = .
 
 all: ${EXE}
 

@@ -5,6 +5,7 @@ include ../Makefile.inc
 LIBRARY=	$(PSE_LIB)/libpse.a
 MODULES_SRC=	$(wildcard *.c)
 MODULES_OBJ=	$(patsubst %.c,%.o,$(MODULES_SRC))
+PSE_DIR = ..
 
 all: $(LIBRARY)
 

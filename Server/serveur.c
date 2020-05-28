@@ -1,9 +1,9 @@
 // serveur.c
 #include "pse.h"
 
-#define CMD         "serveur"
+#define CMD "serveur"
 #define NOM_JOURNAL "journal.log"
-#define NB_WORKERS  2 
+#define NB_WORKERS 5
 
 void creerCohorteWorkers(void);
 int chercherWorkerLibre(void);
@@ -25,19 +25,22 @@ sem_t semWorkersLibres;
 pthread_mutex_t mutexFdJournal;
 pthread_mutex_t mutexCanal[NB_WORKERS];
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   short port;
   int ecoute, canal, ret;
   struct sockaddr_in adrEcoute, adrClient;
   unsigned int lgAdrClient;
   int numWorkerLibre;
 
+  initChatRooms();
+
   if (argc != 2)
     erreur("usage: %s port\n", argv[0]);
 
   port = (short)atoi(argv[1]);
 
-  fdJournal = open(NOM_JOURNAL, O_CREAT|O_WRONLY|O_APPEND, 0644);
+  fdJournal = open(NOM_JOURNAL, O_CREAT | O_WRONLY | O_APPEND, 0644);
   if (fdJournal == -1)
     erreur_IO("ouverture journal");
 
@@ -51,7 +54,7 @@ int main(int argc, char *argv[]) {
   ecoute = socket(AF_INET, SOCK_STREAM, 0);
   if (ecoute < 0)
     erreur_IO("socket");
-  
+
   adrEcoute.sin_family = AF_INET;
   adrEcoute.sin_addr.s_addr = INADDR_ANY;
   adrEcoute.sin_port = htons(port);
@@ -59,13 +62,14 @@ int main(int argc, char *argv[]) {
   ret = bind(ecoute, (struct sockaddr *)&adrEcoute, sizeof(adrEcoute));
   if (ret < 0)
     erreur_IO("bind");
-  
+
   printf("%s: listening to socket\n", CMD);
   ret = listen(ecoute, 5);
   if (ret < 0)
     erreur_IO("listen");
 
-  while (VRAI) {
+  while (VRAI)
+  {
     printf("%s: accepting a connection\n", CMD);
     lgAdrClient = sizeof(adrClient);
     canal = accept(ecoute, (struct sockaddr *)&adrClient, &lgAdrClient);
@@ -73,7 +77,7 @@ int main(int argc, char *argv[]) {
       erreur_IO("accept");
 
     printf("%s: adr %s, port %hu\n", CMD,
-        stringIP(ntohl(adrClient.sin_addr.s_addr)), ntohs(adrClient.sin_port));
+           stringIP(ntohl(adrClient.sin_addr.s_addr)), ntohs(adrClient.sin_port));
 
     ret = sem_wait(&semWorkersLibres);
     if (ret == -1)
@@ -84,6 +88,8 @@ int main(int argc, char *argv[]) {
     ret = sem_post(&dataSpec[numWorkerLibre].sem);
     if (ret == -1)
       erreur_IO("post semaphore worker");
+
+    sleep(1);
   }
 
   if (close(ecoute) == -1)
@@ -95,10 +101,12 @@ int main(int argc, char *argv[]) {
   exit(EXIT_SUCCESS);
 }
 
-void creerCohorteWorkers(void) {
+void creerCohorteWorkers(void)
+{
   int i, ret;
 
-  for (i = 0; i < NB_WORKERS; i++) {
+  for (i = 0; i < NB_WORKERS; i++)
+  {
     dataSpec[i].canal = -1;
     dataSpec[i].tid = i;
 
@@ -113,10 +121,12 @@ void creerCohorteWorkers(void) {
 }
 
 // retourne le no. du worker ou -1 si pas de worker libre
-int chercherWorkerLibre(void) {
+int chercherWorkerLibre(void)
+{
   int i, canal;
 
-  for (i = 0; i < NB_WORKERS; i++) {
+  for (i = 0; i < NB_WORKERS; i++)
+  {
     lockMutexCanal(i);
     canal = dataSpec[i].canal;
     unlockMutexCanal(i);
@@ -127,11 +137,13 @@ int chercherWorkerLibre(void) {
   return -1;
 }
 
-void *threadWorker(void *arg) {
-  DataSpec *dataSpec = (DataSpec *)arg; 
+void *threadWorker(void *arg)
+{
+  DataSpec *dataSpec = (DataSpec *)arg;
   int ret;
 
-  while (VRAI) {
+  while (VRAI)
+  {
     ret = sem_wait(&dataSpec->sem);
     if (ret == -1)
       erreur_IO("wait semaphore worker");
@@ -154,30 +166,37 @@ void *threadWorker(void *arg) {
   pthread_exit(NULL);
 }
 
-void sessionClient(int canal) {
+void sessionClient(int canal)
+{
   int fin = FAUX;
   char ligne[LIGNE_MAX];
   int lgLue, lgEcr;
 
-  while (!fin) {
+  while (!fin)
+  {
     lgLue = lireLigne(canal, ligne);
     if (lgLue == -1)
       erreur_IO("lecture canal");
 
-    else if (lgLue == 0) {  // arret du client (CTRL-D, interruption)
+    else if (lgLue == 0)
+    { // arret du client (CTRL-D, interruption)
       fin = VRAI;
       printf("%s: arret du client\n", CMD);
     }
-    else {  // lgLue > 0
-      if (strcmp(ligne, "fin") == 0) {
+    else
+    { // lgLue > 0
+      if (strcmp(ligne, "fin") == 0)
+      {
         fin = VRAI;
         printf("%s: fin session client\n", CMD);
       }
-      else if (strcmp(ligne, "init") == 0) {
+      else if (strcmp(ligne, "init") == 0)
+      {
         remiseAZeroJournal();
         printf("%s: remise a zero du journal\n", CMD);
       }
-      else {
+      else
+      {
         lgEcr = ecrireLigne(fdJournal, ligne);
         if (lgEcr < 0)
           erreur_IO("ecriture journal");
@@ -190,7 +209,8 @@ void sessionClient(int canal) {
     erreur_IO("fermeture canal");
 }
 
-int ecrireDansJournal(char *ligne) {
+int ecrireDansJournal(char *ligne)
+{
   int lg;
 
   lockMutexFdJournal();
@@ -200,13 +220,14 @@ int ecrireDansJournal(char *ligne) {
   return lg;
 }
 
-void remiseAZeroJournal(void) {
+void remiseAZeroJournal(void)
+{
   lockMutexFdJournal();
 
   if (close(fdJournal) < 0)
     erreur_IO("fermeture journal pour remise a zero");
 
-  fdJournal = open("journal.log", O_TRUNC|O_WRONLY|O_APPEND);
+  fdJournal = open("journal.log", O_TRUNC | O_WRONLY | O_APPEND);
   if (fdJournal < 0)
     erreur_IO("reouverture journal");
 

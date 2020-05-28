@@ -1,6 +1,6 @@
 # Makefile.inc: definitions communes
 
-PSE_DIR = ..
+PSE_DIR = .
 PSE_BIN = ${PSE_DIR}/bin
 PSE_LIB = ${PSE_DIR}/lib
 PSE_INCL_DIR = ${PSE_DIR}/include
