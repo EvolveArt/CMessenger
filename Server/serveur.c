@@ -3,18 +3,22 @@
 
 #define CMD "serveur"
 #define NOM_JOURNAL "journal.log"
-#define NB_WORKERS 5
+
+#define NB_WORKERS 9
 
 void creerCohorteWorkers(void);
 int chercherWorkerLibre(void);
 void *threadWorker(void *arg);
-void sessionClient(int canal);
+int checkUsername(int canal, char *username);
+void sessionClient(int canal, char *username);
 int ecrireDansJournal(char *ligne);
 void remiseAZeroJournal(void);
 void lockMutexFdJournal(void);
 void unlockMutexFdJournal(void);
 void lockMutexCanal(int numWorker);
 void unlockMutexCanal(int numWorker);
+void lockMutexUsername(int numWorker);
+void unlockMutexUsername(int numWorker);
 
 int fdJournal;
 DataSpec dataSpec[NB_WORKERS];
@@ -24,6 +28,7 @@ sem_t semWorkersLibres;
 // chaque worker
 pthread_mutex_t mutexFdJournal;
 pthread_mutex_t mutexCanal[NB_WORKERS];
+pthread_mutex_t mutexUsername[NB_WORKERS];
 
 int main(int argc, char *argv[])
 {
@@ -109,6 +114,7 @@ void creerCohorteWorkers(void)
   {
     dataSpec[i].canal = -1;
     dataSpec[i].tid = i;
+    strcpy(dataSpec[i].username, "");
 
     ret = sem_init(&dataSpec[i].sem, 0, 0);
     if (ret == -1)
@@ -141,6 +147,7 @@ void *threadWorker(void *arg)
 {
   DataSpec *dataSpec = (DataSpec *)arg;
   int ret;
+  char username[LIGNE_MAX];
 
   while (VRAI)
   {
@@ -150,7 +157,20 @@ void *threadWorker(void *arg)
 
     printf("worker %d: reveil\n", dataSpec->tid);
 
-    sessionClient(dataSpec->canal);
+    lockMutexUsername(dataSpec->tid);
+    if (checkUsername(dataSpec->canal, username) == 1)
+    {
+      strcpy(dataSpec->username, username);
+      printf("serveur : user %s added\n", dataSpec->username);
+      sessionClient(dataSpec->canal, dataSpec->username);
+      strcpy(dataSpec->username, ""); //libération du username une fois que le client est parti
+    }
+    else
+    {
+      printf("%s : already used\n", username);
+      strcpy(dataSpec->username, "");
+    }
+    unlockMutexUsername(dataSpec->tid);
 
     lockMutexCanal(dataSpec->tid);
     dataSpec->canal = -1;
@@ -166,10 +186,37 @@ void *threadWorker(void *arg)
   pthread_exit(NULL);
 }
 
-void sessionClient(int canal)
+int checkUsername(int canal, char *username)
+{
+  int teststrcmp;
+  int lgLue;
+
+  lgLue = read(canal, username, sizeof(username));
+  if (lgLue == -1)
+    erreur_IO("lecture canal");
+
+  for (int i = 0; i < NB_WORKERS; ++i)
+  {
+    if ((teststrcmp = strncmp(dataSpec[i].username, username, LIGNE_MAX)) == 0)
+    {
+      char *message = "username_already_used";
+      if (write(canal, message, sizeof(message)) == -1)
+        erreur_IO("ecriture canal"); //envoyer au client: username déjà utilisé
+      if (close(canal) == -1)
+        erreur_IO("fermeture canal");
+      return 0;
+    }
+  }
+  if (write(canal, username, sizeof(username)) == -1)
+    erreur_IO("ecriture canal");
+  return 1;
+}
+
+void sessionClient(int canal, char *username)
 {
   int fin = FAUX;
   char ligne[LIGNE_MAX];
+  char message[LIGNE_MAX] = "";
   int lgLue, lgEcr;
 
   while (!fin)
@@ -181,26 +228,41 @@ void sessionClient(int canal)
     else if (lgLue == 0)
     { // arret du client (CTRL-D, interruption)
       fin = VRAI;
-      printf("%s: arret du client\n", CMD);
+      printf("%s: arret de %s\n", CMD, username);
     }
     else
     { // lgLue > 0
       if (strcmp(ligne, "fin") == 0)
       {
         fin = VRAI;
-        printf("%s: fin session client\n", CMD);
+        printf("%s: fin session %s\n", CMD, username);
       }
       else if (strcmp(ligne, "init") == 0)
       {
         remiseAZeroJournal();
-        printf("%s: remise a zero du journal\n", CMD);
+        printf("%s: remise a zero du journal par %s\n", CMD, username);
       }
       else
       {
-        lgEcr = ecrireLigne(fdJournal, ligne);
+        strcpy(message, "");
+        strcat(message, username);
+        strcat(message, "> ");
+        strcat(message, ligne);
+        printf("%s\n", message);
+        lgEcr = ecrireLigne(fdJournal, message);
         if (lgEcr < 0)
           erreur_IO("ecriture journal");
-        printf("%s: ligne de %d octets ecrite dans journal\n", CMD, lgEcr);
+        printf("%s: ligne de %d octets ecrite dans journal par %s\n", CMD, lgEcr, username);
+
+        for (int i = 0; i < NB_WORKERS; ++i)
+        {
+          if (dataSpec[i].canal != -1 && dataSpec[i].username != username)
+          {
+            printf("On envoie le message sur le canal %d, celui de %s, chef!\n", dataSpec[i].canal, dataSpec[i].username);
+            if (ecrireLigne(dataSpec[i].canal, message) < 0)
+              erreur_IO("ecriture canal");
+          }
+        }
       }
     }
   }
@@ -268,4 +330,22 @@ void unlockMutexCanal(int numWorker)
   ret = pthread_mutex_unlock(&mutexCanal[numWorker]);
   if (ret != 0)
     erreur_IO("unlock mutex canal");
+}
+
+void lockMutexUsername(int numWorker)
+{
+  int ret;
+
+  ret = pthread_mutex_lock(&mutexUsername[numWorker]);
+  if (ret != 0)
+    erreur_IO("lock mutex username");
+}
+
+void unlockMutexUsername(int numWorker)
+{
+  int ret;
+
+  ret = pthread_mutex_unlock(&mutexUsername[numWorker]);
+  if (ret != 0)
+    erreur_IO("unlock mutex username");
 }
