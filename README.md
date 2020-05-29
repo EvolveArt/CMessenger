@@ -5,7 +5,7 @@
 
 - Pseudo du client, unique -> Julien OK
 - Feedback du serveur -> Julien OK
-- Affichage Client autres messages -> Julien
+- Affichage Client autres messages -> Julien ok
 
 - Menu en console :
   - Créer une chat room -> NOM
