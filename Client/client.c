@@ -106,7 +106,7 @@ ChatRoom *mainMenu()
     switch (choice)
     {
     case '1':
-      printf("Donnez un nom à la room : ");
+      printf("Donnez un nom à la room :  ");
       clearStdin();
       fgets(room_name, MAX_ROOM_NAME, stdin);
       str_trim_lf(room_name, strlen(room_name));
