@@ -3,16 +3,25 @@
 
 #define CMD   "client"
 
+void sendUsername(int fd, char* username);
+void *receiveMessage(void *arg);
+
+int sock;
+
 int main(int argc, char *argv[]) {
-  int sock, ret;
+  int ret;
   struct sockaddr_in *adrServ;
   int fin = FAUX;
   char ligne[LIGNE_MAX];
+  char username[LIGNE_MAX];
+  pthread_t idThreadReceive; // thread qui gère la réception de messages des autres clients
 
   signal(SIGPIPE, SIG_IGN);
 
-  if (argc != 3)
-    erreur("usage: %s machine port\n", argv[0]);
+  if (argc != 4)
+    erreur("usage: %s machine port username\n", argv[0]);
+
+  strcpy(username, argv[3]);
 
   printf("%s: creating a socket\n", CMD);
   sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -33,17 +42,29 @@ int main(int argc, char *argv[]) {
   if (ret < 0)
     erreur_IO("connect");
 
-  while (!fin) {
-    printf("ligne> ");
-    if (fgets(ligne, LIGNE_MAX, stdin) == NULL)
-      // sortie par CTRL-D
-      fin = VRAI;
-    else {
-      if (ecrireLigne(sock, ligne) == -1)
-        erreur_IO("ecriture socket");
-
-      if (strcmp(ligne, "fin\n") == 0)
+  sendUsername(sock, username);
+  if(strncmp(username, argv[3], LIGNE_MAX) != 0)
+  {
+    printf("%s already used.\n", argv[3]);
+  }
+  else
+  {
+    // réception des messages
+    pthread_create(&idThreadReceive, NULL, receiveMessage, NULL);
+    //envoi des messages
+    while (!fin)
+    {
+      printf("> ");
+      if (fgets(ligne, LIGNE_MAX, stdin) == NULL)
+        // sortie par CTRL-D
         fin = VRAI;
+      else {
+        if (ecrireLigne(sock, ligne) == -1)
+          erreur_IO("ecriture socket");
+
+        if (strcmp(ligne, "fin\n") == 0)
+          fin = VRAI;
+      }
     }
   }
 
@@ -51,4 +72,25 @@ int main(int argc, char *argv[]) {
     erreur_IO("fermeture socket");
 
   exit(EXIT_SUCCESS);
+}
+
+void sendUsername(int fd, char* username)
+{
+  if (write(fd, username, sizeof(username)) == -1)
+    erreur_IO("ecriture socket");
+
+  if (read(fd, username, sizeof(username)) == -1)
+    erreur_IO("lecture socket");
+}
+
+void *receiveMessage(void *arg)
+{
+  char ligne[LIGNE_MAX];
+
+  while(1)
+  {
+    if (lireLigne(sock, ligne) == -1)
+      erreur_IO("lecture socket");
+    printf("%s\n", ligne);
+  }
 }
