@@ -10,8 +10,8 @@ void creerCohorteWorkers(void);
 int chercherWorkerLibre(void);
 void *threadWorker(void *arg);
 int checkUsername(int canal, char *username);
-int executeUserAction(int canal);
-void sessionClient(int canal, char *username);
+int executeUserAction(DataSpec *_dataSpec);
+void sessionClient(int canal, char *username, int room_id);
 int ecrireDansJournal(char *ligne);
 void remiseAZeroJournal(void);
 void lockMutexFdJournal(void);
@@ -171,7 +171,7 @@ void *threadWorker(void *arg)
           break;
       }
 
-      sessionClient(dataSpec->canal, dataSpec->username);
+      sessionClient(dataSpec->canal, dataSpec->username, dataSpec->room_id);
 
       strcpy(dataSpec->username, ""); //libération du username une fois que le client est parti
     }
@@ -272,7 +272,7 @@ int executeUserAction(DataSpec *_dataSpec)
   return 0;
 }
 
-void sessionClient(int canal, char *username)
+void sessionClient(int canal, char *username, int room_id)
 {
   int fin = FAUX;
   char ligne[LIGNE_MAX];
@@ -316,7 +316,7 @@ void sessionClient(int canal, char *username)
 
         for (int i = 0; i < NB_WORKERS; ++i)
         {
-          if (dataSpec[i].canal != -1 && dataSpec[i].username != username)
+          if (dataSpec[i].canal != -1 && dataSpec[i].username != username && dataSpec[i].room_id == room_id)
           {
             printf("On envoie le message sur le canal %d, celui de %s, chef!\n", dataSpec[i].canal, dataSpec[i].username);
             if (ecrireLigne(dataSpec[i].canal, message) < 0)
