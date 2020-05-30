@@ -48,7 +48,8 @@ void printChatRoomList();
 typedef enum _ACTION
 {
     CREATE = 0x00,
-    JOIN = 0x00
+    JOIN = 0x01,
+    DISPLAY = 0x02
 } ACTION;
 
 #endif

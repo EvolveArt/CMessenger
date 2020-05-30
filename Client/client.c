@@ -13,6 +13,7 @@ static void clearStdin();
 
 int sock;
 ChatRoom *currentChatroom;
+ChatRooms *chatroomsList;
 
 int main(int argc, char *argv[])
 {
@@ -115,11 +116,12 @@ void mainMenu()
 
       sendUserAction(sock, CREATE, room_name);
 
-      return;
       break;
 
     case '2':
+      sendUserAction(sock, DISPLAY, NULL);
       printChatRoomList();
+
       printf("Quelle room voulez vous rejoindre ? (id) ");
       scanf("%d", &room_choice);
 
@@ -170,11 +172,22 @@ void sendUserAction(int fd, ACTION action, void *args)
   if (write(fd, &action, sizeof(action)) == -1)
     erreur_IO("ecriture socket");
 
-  if (write(fd, args, sizeof(args)) == -1)
-    erreur_IO("ecriture socket");
+  if (args != NULL)
+  {
+    if (write(fd, args, sizeof(args)) == -1)
+      erreur_IO("ecriture socket");
+  }
 
-  if (read(fd, currentChatroom, sizeof(currentChatroom)) == -1)
-    erreur_IO("lecture socket client chatroom");
+  if (action == DISPLAY)
+  {
+    if (read(fd, chatroomsList, sizeof(chatroomsList)) == -1)
+      erreur_IO("lecture socket client chatroom");
+  }
+  else
+  {
+    if (read(fd, currentChatroom, sizeof(currentChatroom)) == -1)
+      erreur_IO("lecture socket client chatroom");
+  }
 }
 
 void *receiveMessage(void *arg)

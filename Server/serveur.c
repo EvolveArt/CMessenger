@@ -224,11 +224,12 @@ int checkUsername(int canal, char *username)
 
 int executeUserAction(DataSpec *_dataSpec)
 {
-  printf("%s: Executing User Action\n", CMD);
 
   ACTION userAction;
   if (read(_dataSpec->canal, &userAction, sizeof(ACTION)) == -1)
     erreur_IO("lecture canal user action");
+
+  printf("%s: Executing User Action (%d)\n", CMD, userAction);
 
   ChatRoom *chatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
 
@@ -263,6 +264,14 @@ int executeUserAction(DataSpec *_dataSpec)
     _dataSpec->room_id = chatroom->room_id;
 
     return 1;
+  }
+
+  if (userAction & DISPLAY)
+  {
+    if (write(_dataSpec->canal, chatroomsList, sizeof(chatroomsList)) == -1)
+      erreur_IO("ecriture canal");
+
+    return 0;
   }
 
   char *message = "Action inconnue.";
