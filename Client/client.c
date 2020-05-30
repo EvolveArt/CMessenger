@@ -173,8 +173,8 @@ void sendUserAction(int fd, ACTION action, void *args)
   if (write(fd, args, sizeof(args)) == -1)
     erreur_IO("ecriture socket");
 
-  // if (read(fd, currentChatroom, sizeof(currentChatroom)) == -1)
-  // erreur_IO("lecture socket client chatroom");
+  if (read(fd, currentChatroom, sizeof(currentChatroom)) == -1)
+    erreur_IO("lecture socket client chatroom");
 }
 
 void *receiveMessage(void *arg)
