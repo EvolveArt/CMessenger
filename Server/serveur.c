@@ -165,6 +165,12 @@ void *threadWorker(void *arg)
       strcpy(dataSpec->username, username);
       printf("serveur : user %s added\n", dataSpec->username);
 
+      while (1)
+      {
+        if (executeUserAction(dataSpec) == 1)
+          break;
+      }
+
       sessionClient(dataSpec->canal, dataSpec->username);
 
       strcpy(dataSpec->username, ""); //libération du username une fois que le client est parti
@@ -216,12 +222,12 @@ int checkUsername(int canal, char *username)
   return 1;
 }
 
-int executeUserAction(int canal)
+int executeUserAction(DataSpec *_dataSpec)
 {
   printf("%s: Executing User Action\n", CMD);
 
   ACTION userAction;
-  if (read(canal, &userAction, sizeof(ACTION)) == -1)
+  if (read(_dataSpec->canal, &userAction, sizeof(ACTION)) == -1)
     erreur_IO("lecture canal user action");
 
   ChatRoom *chatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
@@ -231,34 +237,36 @@ int executeUserAction(int canal)
     printf("%s: Creating new ChatRoom", CMD);
 
     char name[MAX_ROOM_NAME];
-    if (read(canal, name, sizeof(name)) == -1)
+    if (read(_dataSpec->canal, name, sizeof(name)) == -1)
       erreur_IO("lecture canal room name");
 
     chatroom = addNewChatRoom(name);
 
-    if (write(canal, chatroom, sizeof(chatroom)) == -1)
+    if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
       erreur_IO("ecriture canal server chatroom");
 
-    return 1;
+    return 0;
   }
 
   if (userAction & JOIN)
   {
     int room_id;
 
-    if (read(canal, &room_id, sizeof(room_id)) == -1)
+    if (read(_dataSpec->canal, &room_id, sizeof(room_id)) == -1)
       erreur_IO("lecture canal");
 
     chatroom = joinChatRoom(room_id);
 
-    if (write(canal, chatroom, sizeof(chatroom)) == -1)
+    if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
       erreur_IO("ecriture canal");
+
+    _dataSpec->room_id = chatroom->room_id;
 
     return 1;
   }
 
   char *message = "Action inconnue.";
-  if (write(canal, message, sizeof(message)) == -1)
+  if (write(_dataSpec->canal, message, sizeof(message)) == -1)
     erreur_IO("ecriture canal");
 
   return 0;
