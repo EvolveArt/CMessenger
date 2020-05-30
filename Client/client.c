@@ -4,12 +4,15 @@
 #define CMD "client"
 
 void sendUsername(int fd, char *username);
+void sendUserAction(int fd, ACTION action, void *args);
+
 void *receiveMessage(void *arg);
-ChatRoom *mainMenu();
+void mainMenu();
 void str_trim_lf(char *arr, int length);
 static void clearStdin();
 
 int sock;
+ChatRoom *currentChatroom;
 
 int main(int argc, char *argv[])
 {
@@ -20,7 +23,7 @@ int main(int argc, char *argv[])
   char username[LIGNE_MAX];
   pthread_t idThreadReceive; // thread qui gère la réception de messages des autres clients
 
-  ChatRoom *currentChatroom = NULL;
+  currentChatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
 
   signal(SIGPIPE, SIG_IGN);
 
@@ -55,7 +58,7 @@ int main(int argc, char *argv[])
   }
   else
   {
-    currentChatroom = mainMenu();
+    mainMenu();
 
     system("clear");
     printf("--- ChatRoom n°%d : %s --- \n", currentChatroom->room_id, currentChatroom->name);
@@ -86,10 +89,9 @@ int main(int argc, char *argv[])
   exit(EXIT_SUCCESS);
 }
 
-ChatRoom *mainMenu()
+void mainMenu()
 {
   char room_name[MAX_ROOM_NAME];
-  ChatRoom *room = (ChatRoom *)malloc(sizeof(ChatRoom));
 
   int choice = 0;
   int room_choice = -1;
@@ -111,23 +113,19 @@ ChatRoom *mainMenu()
       fgets(room_name, MAX_ROOM_NAME, stdin);
       str_trim_lf(room_name, strlen(room_name));
 
-      room = addNewChatRoom(room_name, 1);
-      joinChatRoom(room->room_id);
+      sendUserAction(sock, CREATE, room_name);
 
-      return room;
+      return;
       break;
 
     case '2':
-      if (chatroomsList == NULL)
-      {
-        printf("Il n'existe actuellement aucune chatroom. Créez en une !\n");
-        break;
-      }
       printChatRoomList();
       printf("Quelle room voulez vous rejoindre ? (id) ");
       scanf("%d", &room_choice);
-      room = joinChatRoom(room_choice);
-      return room;
+
+      sendUserAction(sock, JOIN, &room_choice);
+
+      return;
       break;
 
     default:
@@ -157,6 +155,7 @@ static void clearStdin()
   {
   }
 }
+
 void sendUsername(int fd, char *username)
 {
   if (write(fd, username, sizeof(username)) == -1)
@@ -164,6 +163,18 @@ void sendUsername(int fd, char *username)
 
   if (read(fd, username, sizeof(username)) == -1)
     erreur_IO("lecture socket");
+}
+
+void sendUserAction(int fd, ACTION action, void *args)
+{
+  if (write(fd, &action, sizeof(action)) == -1)
+    erreur_IO("ecriture socket");
+
+  if (write(fd, args, sizeof(args)) == -1)
+    erreur_IO("ecriture socket");
+
+  // if (read(fd, currentChatroom, sizeof(currentChatroom)) == -1)
+  // erreur_IO("lecture socket client chatroom");
 }
 
 void *receiveMessage(void *arg)

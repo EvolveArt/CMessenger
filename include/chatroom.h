@@ -9,8 +9,8 @@
 */
 typedef struct ChatRoom_t
 {
-    int room_id;              // unique id of the room
-    int worker_id;            // worker thread for the chat room
+    int room_id; // unique id of the room
+    // int worker_id;            worker thread for the chat room
     char name[MAX_ROOM_NAME]; // name of the room
 
     int nbr_clients; // number of clients in the room
@@ -33,7 +33,7 @@ extern ChatRooms *chatroomsList;
 void initChatRooms(void);
 
 /* Create a chat room , add it to the list and return it*/
-ChatRoom *addNewChatRoom(char room_name[MAX_ROOM_NAME], int worker_id);
+ChatRoom *addNewChatRoom(char room_name[MAX_ROOM_NAME]);
 
 /* Free and remove from the list a chat room given its id */
 void freeChatRoom(int room_id);
@@ -43,5 +43,12 @@ ChatRoom *joinChatRoom(int room_id);
 
 /* Display the list of chatrooms */
 void printChatRoomList();
+
+/* User Actions */
+typedef enum _ACTION
+{
+    CREATE = 0x00,
+    JOIN = 0x00
+} ACTION;
 
 #endif

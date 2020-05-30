@@ -7,12 +7,12 @@ void initChatRooms(void)
     chatroomsList = NULL;
 }
 
-ChatRoom *addNewChatRoom(char *room_name, int worker_id)
+ChatRoom *addNewChatRoom(char *room_name)
 {
     ChatRoom *_chatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
 
     strcpy(_chatroom->name, room_name);
-    _chatroom->worker_id = worker_id;
+    // _chatroom->worker_id = worker_id;
 
     if (chatroomsList == NULL)
     {
