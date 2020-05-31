@@ -20,17 +20,20 @@ void lockMutexCanal(int numWorker);
 void unlockMutexCanal(int numWorker);
 void lockMutexUsername(int numWorker);
 void unlockMutexUsername(int numWorker);
+void lockMutexRoomID(int numWorker);
+void unlockMutexRoomID(int numWorker);
 
 int fdJournal;
 DataSpec dataSpec[NB_WORKERS];
 sem_t semWorkersLibres;
-ChatRooms *chatroomsList;
+// ChatRooms *chatroomsList;
 
 // mutex pour acces concurrent au descripteur du fichier journal et au canal de
 // chaque worker
 pthread_mutex_t mutexFdJournal;
 pthread_mutex_t mutexCanal[NB_WORKERS];
 pthread_mutex_t mutexUsername[NB_WORKERS];
+pthread_mutex_t mutexRoomID[NB_WORKERS];
 
 int main(int argc, char *argv[])
 {
@@ -167,8 +170,11 @@ void *threadWorker(void *arg)
 
       while (1)
       {
-        if (executeUserAction(dataSpec) == 1)
+        int ret = executeUserAction(dataSpec);
+        if (ret == 1)
           break;
+
+        sleep(1);
       }
 
       sessionClient(dataSpec->canal, dataSpec->username, dataSpec->room_id);
@@ -229,13 +235,13 @@ int executeUserAction(DataSpec *_dataSpec)
   if (read(_dataSpec->canal, &userAction, sizeof(ACTION)) == -1)
     erreur_IO("lecture canal user action");
 
-  printf("%s: Executing User Action (%d)\n", CMD, userAction);
+  printf("%s: Exécution d'une User Action (%d)\n", CMD, userAction);
 
   ChatRoom *chatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
 
-  if (userAction & CREATE)
+  if (userAction == CREATE)
   {
-    printf("%s: Creating new ChatRoom", CMD);
+    printf("%s: Création d'une nouvelle ChatRoom\n", CMD);
 
     char name[MAX_ROOM_NAME];
     if (read(_dataSpec->canal, name, sizeof(name)) == -1)
@@ -249,8 +255,10 @@ int executeUserAction(DataSpec *_dataSpec)
     return 0;
   }
 
-  if (userAction & JOIN)
+  if (userAction == JOIN)
   {
+    printf("%s: Rejoindre une ChatRoom\n", CMD);
+
     int room_id;
 
     if (read(_dataSpec->canal, &room_id, sizeof(room_id)) == -1)
@@ -261,13 +269,18 @@ int executeUserAction(DataSpec *_dataSpec)
     if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
       erreur_IO("ecriture canal");
 
+    lockMutexRoomID(_dataSpec->tid);
     _dataSpec->room_id = chatroom->room_id;
+    unlockMutexRoomID(_dataSpec->tid);
 
     return 1;
   }
 
-  if (userAction & DISPLAY)
+  if (userAction == DISPLAY)
   {
+    printf("%s: Affichage de la liste des ChatRooms\n", CMD);
+    // printChatRoomList();
+
     if (write(_dataSpec->canal, chatroomsList, sizeof(chatroomsList)) == -1)
       erreur_IO("ecriture canal");
 
@@ -313,7 +326,11 @@ void sessionClient(int canal, char *username, int room_id)
       }
       else
       {
+        char roomIndicator[MAX_ROOM_NAME + 5];
+        sprintf(roomIndicator, "[%s] ", getChatRoomByID(room_id)->name);
+
         strcpy(message, "");
+        strcat(message, roomIndicator);
         strcat(message, username);
         strcat(message, "> ");
         strcat(message, ligne);
@@ -417,4 +434,22 @@ void unlockMutexUsername(int numWorker)
   ret = pthread_mutex_unlock(&mutexUsername[numWorker]);
   if (ret != 0)
     erreur_IO("unlock mutex username");
+}
+
+void lockMutexRoomID(int numWorker)
+{
+  int ret;
+
+  ret = pthread_mutex_lock(&mutexRoomID[numWorker]);
+  if (ret != 0)
+    erreur_IO("lock mutex roomID");
+}
+
+void unlockMutexRoomID(int numWorker)
+{
+  int ret;
+
+  ret = pthread_mutex_unlock(&mutexRoomID[numWorker]);
+  if (ret != 0)
+    erreur_IO("unlock mutex roomID");
 }

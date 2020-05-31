@@ -13,7 +13,7 @@ static void clearStdin();
 
 int sock;
 ChatRoom *currentChatroom;
-ChatRooms *chatroomsList;
+ChatRooms *_chatroomsList;
 
 int main(int argc, char *argv[])
 {
@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
   pthread_t idThreadReceive; // thread qui gère la réception de messages des autres clients
 
   currentChatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
+  _chatroomsList = NULL;
 
   signal(SIGPIPE, SIG_IGN);
 
@@ -119,7 +120,7 @@ void mainMenu()
       break;
 
     case '2':
-      sendUserAction(sock, DISPLAY, NULL);
+      // sendUserAction(sock, DISPLAY, NULL);
       printChatRoomList();
 
       printf("Quelle room voulez vous rejoindre ? (id) ");
@@ -169,24 +170,28 @@ void sendUsername(int fd, char *username)
 
 void sendUserAction(int fd, ACTION action, void *args)
 {
+  printf("%s: User Action %d \n", CMD, action);
+
   if (write(fd, &action, sizeof(action)) == -1)
     erreur_IO("ecriture socket");
 
   if (args != NULL)
   {
+    printf("%s: Envoi de données\n", CMD);
+
     if (write(fd, args, sizeof(args)) == -1)
       erreur_IO("ecriture socket");
   }
 
   if (action == DISPLAY)
   {
-    if (read(fd, chatroomsList, sizeof(chatroomsList)) == -1)
-      erreur_IO("lecture socket client chatroom");
+    if (read(fd, _chatroomsList, sizeof(_chatroomsList)) == -1)
+      erreur_IO("lecture socket DISPLAY");
   }
   else
   {
     if (read(fd, currentChatroom, sizeof(currentChatroom)) == -1)
-      erreur_IO("lecture socket client chatroom");
+      erreur_IO("lecture socket ACTION");
   }
 }
 

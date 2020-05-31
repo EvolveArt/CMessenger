@@ -73,6 +73,26 @@ void freeChatRoom(int room_id)
 
 ChatRoom *joinChatRoom(int room_id)
 {
+    ChatRoom *actualChatroom = getChatRoomByID(room_id);
+
+    actualChatroom->nbr_clients++;
+
+    return actualChatroom;
+}
+
+void printChatRoomList()
+{
+    ChatRooms *cur = chatroomsList;
+
+    while (cur)
+    {
+        printf("(%d clients) Room %d : %s\n", cur->chatroom.nbr_clients, cur->chatroom.room_id, cur->chatroom.name);
+        cur = cur->next;
+    }
+}
+
+ChatRoom *getChatRoomByID(int room_id)
+{
     ChatRooms *cur = chatroomsList;
 
     // Find the room with the given id
@@ -88,18 +108,5 @@ ChatRoom *joinChatRoom(int room_id)
     if (cur->chatroom.room_id != room_id)
         erreur("No room found with the id : room_id = %d", room_id);
 
-    cur->chatroom.nbr_clients++;
-
     return &cur->chatroom;
-}
-
-void printChatRoomList()
-{
-    ChatRooms *cur = chatroomsList;
-
-    while (cur)
-    {
-        printf("(%d clients) Room %d : %s\n", cur->chatroom.nbr_clients, cur->chatroom.room_id, cur->chatroom.name);
-        cur = cur->next;
-    }
 }

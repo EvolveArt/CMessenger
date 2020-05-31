@@ -44,6 +44,9 @@ ChatRoom *joinChatRoom(int room_id);
 /* Display the list of chatrooms */
 void printChatRoomList();
 
+/* Get a chatroom given its id */
+ChatRoom *getChatRoomByID(int room_id);
+
 /* User Actions */
 typedef enum _ACTION
 {
