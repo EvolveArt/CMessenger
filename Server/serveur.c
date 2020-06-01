@@ -269,6 +269,9 @@ int executeUserAction(DataSpec *_dataSpec)
     if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
       erreur_IO("ecriture canal");
 
+    if (chatroom->room_id == -1)
+      return 0;
+
     lockMutexRoomID(_dataSpec->tid);
     _dataSpec->room_id = chatroom->room_id;
     unlockMutexRoomID(_dataSpec->tid);
@@ -282,7 +285,7 @@ int executeUserAction(DataSpec *_dataSpec)
     printChatRoomList(_dataSpec->canal);
 
     //if (write(_dataSpec->canal, chatroomsList, sizeof(chatroomsList)) == -1)
-      //erreur_IO("ecriture canal");
+    //erreur_IO("ecriture canal");
 
     return 0;
   }
@@ -351,6 +354,8 @@ void sessionClient(int canal, char *username, int room_id)
       }
     }
   }
+
+  getChatRoomByID(room_id)->nbr_clients--;
 
   if (close(canal) == -1)
     erreur_IO("fermeture canal");

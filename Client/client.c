@@ -127,7 +127,11 @@ void mainMenu()
 
       sendUserAction(sock, JOIN, &room_choice);
 
-      return;
+      if (currentChatroom->room_id != -1)
+        return;
+
+      printf("ID non valide, veuillez réessayer.\n");
+
       break;
 
     default:

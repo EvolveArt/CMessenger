@@ -64,7 +64,10 @@ void freeChatRoom(int room_id)
     }
 
     if (cur->chatroom.room_id != room_id)
-        erreur("No room found with the id : room_id = %d", room_id);
+    {
+        printf("No room found with the id : room_id = %d", room_id);
+        return;
+    }
 
     // Remove it from the linked list
     prev->next = cur->next;
@@ -116,7 +119,16 @@ ChatRoom *getChatRoomByID(int room_id)
     }
 
     if (cur->chatroom.room_id != room_id)
-        erreur("No room found with the id : room_id = %d", room_id);
+    {
+        printf("Pas de room trouvée avec 'room_id' = %d\n", room_id);
+
+        ChatRoom *error_room = (ChatRoom *)malloc(sizeof(ChatRoom));
+        strcpy(error_room->name, "");
+        error_room->nbr_clients = 0;
+        error_room->room_id = -1;
+
+        return error_room;
+    }
 
     return &cur->chatroom;
 }
