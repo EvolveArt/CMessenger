@@ -82,18 +82,22 @@ ChatRoom *joinChatRoom(int room_id)
 
 void printChatRoomList(int canal)
 {
-    printf("test");
     ChatRooms *cur = chatroomsList;
-    char ligne[LIGNE_MAX];
+
     while (cur)
     {
-        sprintf(ligne, "(%d clients) Room %d : %s\n", cur->chatroom.nbr_clients, cur->chatroom.room_id, cur->chatroom.name);
+        char ligne[LIGNE_MAX] = {0};
+        snprintf(ligne, LIGNE_MAX - 1, "(%d clients) Room %d : %s\n", cur->chatroom.nbr_clients, cur->chatroom.room_id, cur->chatroom.name);
         printf("ligne : %s", ligne);
-        if (ecrireLigne(canal, ligne) == -1)
+
+        if (write(canal, ligne, sizeof(ligne)) == -1)
             erreur_IO("ecriture canal");
+
         cur = cur->next;
     }
-    if (ecrireLigne(canal, "end_list") == -1)
+
+    char *end_message = "end_list";
+    if (write(canal, end_message, sizeof(end_message)) == -1)
         erreur_IO("écriture canal");
 }
 

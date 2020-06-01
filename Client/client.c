@@ -121,7 +121,7 @@ void mainMenu()
 
     case '2':
       sendUserAction(sock, DISPLAY, NULL);
-    
+
       printf("Quelle room voulez vous rejoindre ? (id) ");
       scanf("%d", &room_choice);
 
@@ -169,7 +169,6 @@ void sendUsername(int fd, char *username)
 
 void sendUserAction(int fd, ACTION action, void *args)
 {
-  char room_name[LIGNE_MAX] = "";
   printf("%s: User Action %d \n", CMD, action);
 
   if (write(fd, &action, sizeof(action)) == -1)
@@ -185,15 +184,23 @@ void sendUserAction(int fd, ACTION action, void *args)
 
   if (action == DISPLAY)
   {
-    printf("display");
-    while(strcmp(room_name, "end_list") != 0)
+    printf("Voici la liste des Chat Rooms : \n");
+
+    char room_name[LIGNE_MAX];
+
+    while (1)
     {
-      if (lireLigne(sock, room_name) == -1)
+
+      if (read(fd, room_name, sizeof(room_name)) == -1)
         erreur_IO("lecture socket DISPLAY");
+
+      if (strstr(room_name, "end_list") != NULL)
+        break;
+
       printf("%s", room_name);
     }
     //if (read(fd, _chatroomsList, sizeof(_chatroomsList)) == -1)
-      //erreur_IO("lecture socket DISPLAY");
+    //erreur_IO("lecture socket DISPLAY");
   }
   else
   {
