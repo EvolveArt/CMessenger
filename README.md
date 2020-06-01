@@ -8,7 +8,7 @@ contributors: "HALLGREN Matthias & MASTRANGELO Julien"
     - [Objectif du projet](#objectif-du-projet)
     - [Fonctionnalités](#fonctionnalités)
     - [Organisation de l'application](#organisation-de-lapplication)
-      - [Crédits](#crédits)
+    - [Crédits](#crédits)
 
 # CMessenger
 
@@ -91,7 +91,7 @@ Le client et le serveur communiquent avec des *sockets* TCP/IP.
   </br>
 - `./Client/client.c`: Le Client comporte deux threads. </br>Le thread principal dans lequel il envoie des données ou des actions au Serveur. </br>Un thread dans lequel il lit les messages des autres clients que lui envoie le serveur et les affiche.
 
-#### Crédits
+### Crédits
 
 ***
 
