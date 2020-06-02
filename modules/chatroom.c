@@ -64,7 +64,10 @@ void freeChatRoom(int room_id)
     }
 
     if (cur->chatroom.room_id != room_id)
-        erreur("No room found with the id : room_id = %d", room_id);
+    {
+        printf("No room found with the id : room_id = %d", room_id);
+        return;
+    }
 
     // Remove it from the linked list
     prev->next = cur->next;
@@ -80,15 +83,25 @@ ChatRoom *joinChatRoom(int room_id)
     return actualChatroom;
 }
 
-void printChatRoomList()
+void printChatRoomList(int canal)
 {
     ChatRooms *cur = chatroomsList;
 
     while (cur)
     {
-        printf("(%d clients) Room %d : %s\n", cur->chatroom.nbr_clients, cur->chatroom.room_id, cur->chatroom.name);
+        char ligne[LIGNE_MAX] = {0};
+        snprintf(ligne, LIGNE_MAX - 1, "(%d clients) Room %d : %s\n", cur->chatroom.nbr_clients, cur->chatroom.room_id, cur->chatroom.name);
+        printf("ligne : %s", ligne);
+
+        if (write(canal, ligne, sizeof(ligne)) == -1)
+            erreur_IO("ecriture canal");
+
         cur = cur->next;
     }
+
+    char *end_message = "end_list";
+    if (write(canal, end_message, sizeof(end_message)) == -1)
+        erreur_IO("écriture canal");
 }
 
 ChatRoom *getChatRoomByID(int room_id)
@@ -106,7 +119,16 @@ ChatRoom *getChatRoomByID(int room_id)
     }
 
     if (cur->chatroom.room_id != room_id)
-        erreur("No room found with the id : room_id = %d", room_id);
+    {
+        printf("Pas de room trouvée avec 'room_id' = %d\n", room_id);
+
+        ChatRoom *error_room = (ChatRoom *)malloc(sizeof(ChatRoom));
+        strcpy(error_room->name, "");
+        error_room->nbr_clients = 0;
+        error_room->room_id = -1;
+
+        return error_room;
+    }
 
     return &cur->chatroom;
 }

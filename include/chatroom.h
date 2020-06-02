@@ -42,7 +42,7 @@ void freeChatRoom(int room_id);
 ChatRoom *joinChatRoom(int room_id);
 
 /* Display the list of chatrooms */
-void printChatRoomList();
+void printChatRoomList(int canal);
 
 /* Get a chatroom given its id */
 ChatRoom *getChatRoomByID(int room_id);

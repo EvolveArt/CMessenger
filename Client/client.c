@@ -120,15 +120,18 @@ void mainMenu()
       break;
 
     case '2':
-      // sendUserAction(sock, DISPLAY, NULL);
-      printChatRoomList();
+      sendUserAction(sock, DISPLAY, NULL);
 
       printf("Quelle room voulez vous rejoindre ? (id) ");
       scanf("%d", &room_choice);
 
       sendUserAction(sock, JOIN, &room_choice);
 
-      return;
+      if (currentChatroom->room_id != -1)
+        return;
+
+      printf("ID non valide, veuillez réessayer.\n");
+
       break;
 
     default:
@@ -185,8 +188,23 @@ void sendUserAction(int fd, ACTION action, void *args)
 
   if (action == DISPLAY)
   {
-    if (read(fd, _chatroomsList, sizeof(_chatroomsList)) == -1)
-      erreur_IO("lecture socket DISPLAY");
+    printf("Voici la liste des Chat Rooms : \n");
+
+    char room_name[LIGNE_MAX];
+
+    while (1)
+    {
+
+      if (read(fd, room_name, sizeof(room_name)) == -1)
+        erreur_IO("lecture socket DISPLAY");
+
+      if (strstr(room_name, "end_list") != NULL)
+        break;
+
+      printf("%s", room_name);
+    }
+    //if (read(fd, _chatroomsList, sizeof(_chatroomsList)) == -1)
+    //erreur_IO("lecture socket DISPLAY");
   }
   else
   {

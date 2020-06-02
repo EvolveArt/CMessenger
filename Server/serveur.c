@@ -255,7 +255,7 @@ int executeUserAction(DataSpec *_dataSpec)
     return 0;
   }
 
-  if (userAction == JOIN)
+  else if (userAction == JOIN)
   {
     printf("%s: Rejoindre une ChatRoom\n", CMD);
 
@@ -269,6 +269,9 @@ int executeUserAction(DataSpec *_dataSpec)
     if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
       erreur_IO("ecriture canal");
 
+    if (chatroom->room_id == -1)
+      return 0;
+
     lockMutexRoomID(_dataSpec->tid);
     _dataSpec->room_id = chatroom->room_id;
     unlockMutexRoomID(_dataSpec->tid);
@@ -276,13 +279,13 @@ int executeUserAction(DataSpec *_dataSpec)
     return 1;
   }
 
-  if (userAction == DISPLAY)
+  else if (userAction == DISPLAY)
   {
     printf("%s: Affichage de la liste des ChatRooms\n", CMD);
-    // printChatRoomList();
+    printChatRoomList(_dataSpec->canal);
 
-    if (write(_dataSpec->canal, chatroomsList, sizeof(chatroomsList)) == -1)
-      erreur_IO("ecriture canal");
+    //if (write(_dataSpec->canal, chatroomsList, sizeof(chatroomsList)) == -1)
+    //erreur_IO("ecriture canal");
 
     return 0;
   }
@@ -344,7 +347,6 @@ void sessionClient(int canal, char *username, int room_id)
         {
           if (dataSpec[i].canal != -1 && dataSpec[i].username != username && dataSpec[i].room_id == room_id)
           {
-            printf("On envoie le message sur le canal %d, celui de %s, chef!\n", dataSpec[i].canal, dataSpec[i].username);
             if (ecrireLigne(dataSpec[i].canal, message) < 0)
               erreur_IO("ecriture canal");
           }
@@ -352,6 +354,8 @@ void sessionClient(int canal, char *username, int room_id)
       }
     }
   }
+
+  getChatRoomByID(room_id)->nbr_clients--;
 
   if (close(canal) == -1)
     erreur_IO("fermeture canal");
