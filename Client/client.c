@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
         if (ecrireLigne(sock, ligne) == -1)
           erreur_IO("ecriture socket");
 
-        if (strcmp(ligne, "fin\n") == 0)
+        if (strncmp(ligne, "/fin\n", LIGNE_MAX) == 0)
           fin = VRAI;
       }
     }

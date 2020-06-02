@@ -22,6 +22,7 @@ void lockMutexUsername(int numWorker);
 void unlockMutexUsername(int numWorker);
 void lockMutexRoomID(int numWorker);
 void unlockMutexRoomID(int numWorker);
+void extractMessage(char ligne[LIGNE_MAX], char buffer[LIGNE_MAX], char username[LIGNE_MAX]);
 
 int fdJournal;
 DataSpec dataSpec[NB_WORKERS];
@@ -303,10 +304,12 @@ void sessionClient(int canal, char *username, int room_id)
   char ligne[LIGNE_MAX];
   char message[LIGNE_MAX] = "";
   int lgLue, lgEcr;
-  char trash[LIGNE_MAX];
-  char receiver[LIGNE_MAX];
+  //char trash[LIGNE_MAX];
+  char receiver[LIGNE_MAX] = "";
   char buffer[LIGNE_MAX];
-
+  int flag = 0;
+  int i = 0;
+  
   while (!fin)
   {
     lgLue = lireLigne(canal, ligne);
@@ -332,13 +335,32 @@ void sessionClient(int canal, char *username, int room_id)
       }
       else if (strncmp(ligne, "/msg", 4) == 0)
       {
-        sscanf(ligne, "%s %s %s", trash, receiver, buffer);
+        //sscanf(ligne, "%s %s %s", trash, receiver, buffer);
+        strcpy(buffer, "");
+        strcpy(receiver, "");
+        printf("yo\n");
+        extractMessage(ligne, buffer, receiver);
+        printf("ligne : %s, buffer  :%s,receiver %s", ligne, buffer, receiver);
         strcpy(message, "[private]");
         strcat(message, username);
         strcat(message, "> ");
         strcat(message, buffer);
-        //regarder si le receiver existe
-        //lui envoyer le message
+        flag = 0;
+        i = 0;
+        while (!flag && i < NB_WORKERS)       
+        {
+          if (strncmp(dataSpec[i].username, receiver, LIGNE_MAX) == 0)
+          {
+            flag = 1;
+          }
+          i++;
+        }
+        i--;
+        if (flag)
+        {
+          if (ecrireLigne(dataSpec[i].canal, message) < 0)
+            erreur_IO("ecriture canal");
+        }
       }
       else
       {
@@ -469,4 +491,40 @@ void unlockMutexRoomID(int numWorker)
   ret = pthread_mutex_unlock(&mutexRoomID[numWorker]);
   if (ret != 0)
     erreur_IO("unlock mutex roomID");
+}
+
+/* ligne is "/msg username message" */
+void extractMessage(char ligne[LIGNE_MAX], char buffer[LIGNE_MAX], char username[LIGNE_MAX])
+{
+  char space = ' ';
+  char c = ligne[0];
+  int i = 1;
+  //skip '/msg'
+  while (c != space && c != '\0')
+  {
+    c = ligne[i];
+    i++;
+  }
+  i++;
+  c = ligne[i];
+  //extract 'username'
+  int j = 0;
+  while (c != space && c != '\0' && i < LIGNE_MAX) 
+  {
+    username[j] = c;
+    i++;
+    c = ligne[i];
+    j++;
+  }
+  i++;
+  c = ligne[i];
+  //extract 'message'
+  int k = 0;
+  while (c != '\0' && i < LIGNE_MAX)
+  {
+    buffer[k] = c;
+    i++;
+    c = ligne[i];
+    k++;
+  }
 }
