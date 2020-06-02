@@ -303,6 +303,9 @@ void sessionClient(int canal, char *username, int room_id)
   char ligne[LIGNE_MAX];
   char message[LIGNE_MAX] = "";
   int lgLue, lgEcr;
+  char trash[LIGNE_MAX];
+  char receiver[LIGNE_MAX];
+  char buffer[LIGNE_MAX];
 
   while (!fin)
   {
@@ -317,15 +320,25 @@ void sessionClient(int canal, char *username, int room_id)
     }
     else
     { // lgLue > 0
-      if (strcmp(ligne, "fin") == 0)
+      if (strncmp(ligne, "/fin", LIGNE_MAX) == 0)
       {
         fin = VRAI;
         printf("%s: fin session %s\n", CMD, username);
       }
-      else if (strcmp(ligne, "init") == 0)
+      else if (strncmp(ligne, "/init", LIGNE_MAX) == 0)
       {
         remiseAZeroJournal();
         printf("%s: remise a zero du journal par %s\n", CMD, username);
+      }
+      else if (strncmp(ligne, "/msg", 4) == 0)
+      {
+        sscanf(ligne, "%s %s %s", trash, receiver, buffer);
+        strcpy(message, "[private]");
+        strcat(message, username);
+        strcat(message, "> ");
+        strcat(message, buffer);
+        //regarder si le receiver existe
+        //lui envoyer le message
       }
       else
       {
