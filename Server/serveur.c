@@ -23,6 +23,8 @@ void unlockMutexUsername(int numWorker);
 void lockMutexRoomID(int numWorker);
 void unlockMutexRoomID(int numWorker);
 
+void serializeChatroom(int _canal, ChatRoom *source);
+
 int fdJournal;
 DataSpec dataSpec[NB_WORKERS];
 sem_t semWorkersLibres;
@@ -249,8 +251,10 @@ int executeUserAction(DataSpec *_dataSpec)
 
     chatroom = addNewChatRoom(name);
 
-    if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
-      erreur_IO("ecriture canal server chatroom");
+    // if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
+    // erreur_IO("ecriture canal server chatroom");
+
+    serializeChatroom(_dataSpec->canal, chatroom);
 
     return 0;
   }
@@ -266,8 +270,10 @@ int executeUserAction(DataSpec *_dataSpec)
 
     chatroom = joinChatRoom(room_id);
 
-    if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
-      erreur_IO("ecriture canal");
+    // if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
+    // erreur_IO("ecriture canal");
+
+    serializeChatroom(_dataSpec->canal, chatroom);
 
     if (chatroom->room_id == -1)
       return 0;
@@ -295,6 +301,19 @@ int executeUserAction(DataSpec *_dataSpec)
     erreur_IO("ecriture canal");
 
   return 0;
+}
+
+void serializeChatroom(int _canal, ChatRoom *source)
+{
+
+  if (write(_canal, source->name, sizeof(source->name)) == -1)
+    erreur_IO("ecriture canal");
+
+  if (write(_canal, &(source->room_id), sizeof(source->room_id)) == -1)
+    erreur_IO("ecriture canal");
+
+  if (write(_canal, &(source->nbr_clients), sizeof(source->nbr_clients)) == -1)
+    erreur_IO("ecriture canal");
 }
 
 void sessionClient(int canal, char *username, int room_id)

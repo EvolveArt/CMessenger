@@ -1,7 +1,7 @@
 #ifndef CHATROOM_INCLUDE_H
 #define CHATROOM_INCLUDE_H
 
-#define MAX_ROOM_NAME 50
+#define MAX_ROOM_NAME 100
 
 /**
 * Structure for a chat room

@@ -11,6 +11,8 @@ void mainMenu();
 void str_trim_lf(char *arr, int length);
 static void clearStdin();
 
+void deserializeChatroom(int _fd, ChatRoom *destination);
+
 int sock;
 ChatRoom *currentChatroom;
 ChatRooms *_chatroomsList;
@@ -105,6 +107,8 @@ void mainMenu()
     printf("1. Créer une nouvelle ChatRoom\n");
     printf("2. Rejoindre une ChatRoom\n");
 
+    // clearStdin();
+
     choice = getchar();
 
     switch (choice)
@@ -182,7 +186,7 @@ void sendUserAction(int fd, ACTION action, void *args)
   {
     printf("%s: Envoi de données\n", CMD);
 
-    if (write(fd, args, sizeof(args)) == -1)
+    if (write(fd, args, MAX_ROOM_NAME) == -1)
       erreur_IO("ecriture socket");
   }
 
@@ -208,8 +212,10 @@ void sendUserAction(int fd, ACTION action, void *args)
   }
   else
   {
-    if (read(fd, currentChatroom, sizeof(currentChatroom)) == -1)
-      erreur_IO("lecture socket ACTION");
+    // if (read(_fd, currentChatroom, sizeof(currentChatroom)) == -1)
+    //   erreur_IO("lecture socket ACTION");
+
+    deserializeChatroom(fd, currentChatroom);
   }
 }
 
@@ -223,4 +229,25 @@ void *receiveMessage(void *arg)
       erreur_IO("lecture socket");
     printf("%s\n", ligne);
   }
+}
+
+void deserializeChatroom(int _fd, ChatRoom *destination)
+{
+
+  char _name[MAX_ROOM_NAME];
+  int _room_id;
+  int _nbr_clients;
+
+  if (read(_fd, _name, sizeof(_name)) == -1)
+    erreur_IO("lecture socket ACTION");
+
+  if (read(_fd, &_room_id, sizeof(_room_id)) == -1)
+    erreur_IO("lecture socket ACTION");
+
+  if (read(_fd, &_nbr_clients, sizeof(_nbr_clients)) == -1)
+    erreur_IO("lecture socket ACTION");
+
+  strcpy(destination->name, _name);
+  destination->room_id = _room_id;
+  destination->nbr_clients = _nbr_clients;
 }
