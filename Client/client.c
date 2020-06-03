@@ -78,8 +78,14 @@ int main(int argc, char *argv[])
         fin = VRAI;
       else
       {
+
         if (ecrireLigne(sock, ligne) == -1)
           erreur_IO("ecriture socket");
+
+        if (strncmp(ligne, "/list\n", LIGNE_MAX) == 0)
+        {
+          sendUserAction(sock, DISPLAY, NULL);
+        }
 
         if (strncmp(ligne, "/fin\n", LIGNE_MAX) == 0)
           fin = VRAI;
@@ -179,6 +185,8 @@ void sendUserAction(int fd, ACTION action, void *args)
 {
   printf("%s: User Action %d \n", CMD, action);
 
+  clearStdin();
+
   if (write(fd, &action, sizeof(action)) == -1)
     erreur_IO("ecriture socket");
 
@@ -198,7 +206,6 @@ void sendUserAction(int fd, ACTION action, void *args)
 
     while (1)
     {
-
       if (read(fd, room_name, sizeof(room_name)) == -1)
         erreur_IO("lecture socket DISPLAY");
 

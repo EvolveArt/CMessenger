@@ -99,6 +99,8 @@ void printChatRoomList(int canal)
         cur = cur->next;
     }
 
+    printf("\n");
+
     char *end_message = "end_list";
     if (write(canal, end_message, sizeof(end_message)) == -1)
         erreur_IO("écriture canal");

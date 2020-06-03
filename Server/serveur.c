@@ -22,7 +22,6 @@ void lockMutexUsername(int numWorker);
 void unlockMutexUsername(int numWorker);
 void lockMutexRoomID(int numWorker);
 void unlockMutexRoomID(int numWorker);
-void extractMessage(char ligne[LIGNE_MAX], char buffer[LIGNE_MAX], char username[LIGNE_MAX]);
 
 void serializeChatroom(int _canal, ChatRoom *source);
 
@@ -345,6 +344,16 @@ void sessionClient(int canal, char *username, int room_id)
         fin = VRAI;
         printf("%s: fin session %s\n", CMD, username);
       }
+      else if (strncmp(ligne, "/list", LIGNE_MAX) == 0)
+      {
+        for (int i = 0; i < NB_WORKERS; ++i)
+        {
+          if (dataSpec[i].canal != -1 && strcmp(dataSpec[i].username, username) == 0)
+          {
+            executeUserAction(&dataSpec[i]);
+          }
+        }
+      }
       else if (strncmp(ligne, "/init", LIGNE_MAX) == 0)
       {
         remiseAZeroJournal();
@@ -359,7 +368,10 @@ void sessionClient(int canal, char *username, int room_id)
         receiver = strtok(NULL, " ");
         buffer = strtok(NULL, "\n");
 
-        printf("%s: sending '%s' to %s\n", CMD, buffer, receiver);
+        if (!receiver || !buffer)
+          continue;
+
+        printf("%s: sending '%s' to %s from %s\n", CMD, buffer, receiver, username);
 
         memset(private_message, '\0', LIGNE_MAX);
         strcpy(private_message, "[private] ");
@@ -505,40 +517,4 @@ void unlockMutexRoomID(int numWorker)
   ret = pthread_mutex_unlock(&mutexRoomID[numWorker]);
   if (ret != 0)
     erreur_IO("unlock mutex roomID");
-}
-
-/* ligne is "/msg username message" */
-void extractMessage(char ligne[LIGNE_MAX], char buffer[LIGNE_MAX], char username[LIGNE_MAX])
-{
-  char space = ' ';
-  char c = ligne[0];
-  int i = 1;
-  //skip '/msg'
-  while (c != space && c != '\0')
-  {
-    c = ligne[i];
-    i++;
-  }
-  i++;
-  c = ligne[i];
-  //extract 'username'
-  int j = 0;
-  while (c != space && c != '\0' && i < LIGNE_MAX)
-  {
-    username[j] = c;
-    i++;
-    c = ligne[i];
-    j++;
-  }
-  i++;
-  c = ligne[i];
-  //extract 'message'
-  int k = 0;
-  while (c != '\0' && i < LIGNE_MAX)
-  {
-    buffer[k] = c;
-    i++;
-    c = ligne[i];
-    k++;
-  }
 }
