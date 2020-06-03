@@ -22,6 +22,7 @@ void lockMutexUsername(int numWorker);
 void unlockMutexUsername(int numWorker);
 void lockMutexRoomID(int numWorker);
 void unlockMutexRoomID(int numWorker);
+void extractMessage(char ligne[LIGNE_MAX], char buffer[LIGNE_MAX], char username[LIGNE_MAX]);
 
 void serializeChatroom(int _canal, ChatRoom *source);
 
@@ -319,9 +320,12 @@ void serializeChatroom(int _canal, ChatRoom *source)
 void sessionClient(int canal, char *username, int room_id)
 {
   int fin = FAUX;
+
   char ligne[LIGNE_MAX];
   char message[LIGNE_MAX] = "";
   int lgLue, lgEcr;
+
+  char private_message[LIGNE_MAX] = "";
 
   while (!fin)
   {
@@ -336,22 +340,48 @@ void sessionClient(int canal, char *username, int room_id)
     }
     else
     { // lgLue > 0
-      if (strcmp(ligne, "fin") == 0)
+      if (strncmp(ligne, "/fin", LIGNE_MAX) == 0)
       {
         fin = VRAI;
         printf("%s: fin session %s\n", CMD, username);
       }
-      else if (strcmp(ligne, "init") == 0)
+      else if (strncmp(ligne, "/init", LIGNE_MAX) == 0)
       {
         remiseAZeroJournal();
         printf("%s: remise a zero du journal par %s\n", CMD, username);
+      }
+      else if (strncmp(ligne, "/msg", 4) == 0)
+      {
+        char *receiver;
+        char *buffer;
+
+        strtok(ligne, " "); // Get rid of the command (/msg)
+        receiver = strtok(NULL, " ");
+        buffer = strtok(NULL, "\n");
+
+        printf("%s: sending '%s' to %s\n", CMD, buffer, receiver);
+
+        memset(private_message, '\0', LIGNE_MAX);
+        strcpy(private_message, "[private] ");
+        strcat(private_message, username);
+        strcat(private_message, "> ");
+        strcat(private_message, buffer);
+
+        for (int i = 0; i < NB_WORKERS; ++i)
+        {
+          if (dataSpec[i].canal != -1 && dataSpec[i].username != username && dataSpec[i].room_id == room_id && strcmp(dataSpec[i].username, receiver) == 0)
+          {
+            if (ecrireLigne(dataSpec[i].canal, private_message) < 0)
+              erreur_IO("ecriture canal");
+          }
+        }
       }
       else
       {
         char roomIndicator[MAX_ROOM_NAME + 5];
         sprintf(roomIndicator, "[%s] ", getChatRoomByID(room_id)->name);
 
-        strcpy(message, "");
+        memset(message, '\0', LIGNE_MAX);
         strcat(message, roomIndicator);
         strcat(message, username);
         strcat(message, "> ");
@@ -475,4 +505,40 @@ void unlockMutexRoomID(int numWorker)
   ret = pthread_mutex_unlock(&mutexRoomID[numWorker]);
   if (ret != 0)
     erreur_IO("unlock mutex roomID");
+}
+
+/* ligne is "/msg username message" */
+void extractMessage(char ligne[LIGNE_MAX], char buffer[LIGNE_MAX], char username[LIGNE_MAX])
+{
+  char space = ' ';
+  char c = ligne[0];
+  int i = 1;
+  //skip '/msg'
+  while (c != space && c != '\0')
+  {
+    c = ligne[i];
+    i++;
+  }
+  i++;
+  c = ligne[i];
+  //extract 'username'
+  int j = 0;
+  while (c != space && c != '\0' && i < LIGNE_MAX)
+  {
+    username[j] = c;
+    i++;
+    c = ligne[i];
+    j++;
+  }
+  i++;
+  c = ligne[i];
+  //extract 'message'
+  int k = 0;
+  while (c != '\0' && i < LIGNE_MAX)
+  {
+    buffer[k] = c;
+    i++;
+    c = ligne[i];
+    k++;
+  }
 }
