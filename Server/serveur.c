@@ -301,15 +301,13 @@ int executeUserAction(DataSpec *_dataSpec)
 void sessionClient(int canal, char *username, int room_id)
 {
   int fin = FAUX;
+
   char ligne[LIGNE_MAX];
   char message[LIGNE_MAX] = "";
   int lgLue, lgEcr;
-  //char trash[LIGNE_MAX];
-  char receiver[LIGNE_MAX] = "";
-  char buffer[LIGNE_MAX];
-  int flag = 0;
-  int i = 0;
-  
+
+  char private_message[LIGNE_MAX] = "";
+
   while (!fin)
   {
     lgLue = lireLigne(canal, ligne);
@@ -335,31 +333,28 @@ void sessionClient(int canal, char *username, int room_id)
       }
       else if (strncmp(ligne, "/msg", 4) == 0)
       {
-        //sscanf(ligne, "%s %s %s", trash, receiver, buffer);
-        strcpy(buffer, "");
-        strcpy(receiver, "");
-        printf("yo\n");
-        extractMessage(ligne, buffer, receiver);
-        printf("ligne : %s, buffer  :%s,receiver %s", ligne, buffer, receiver);
-        strcpy(message, "[private]");
-        strcat(message, username);
-        strcat(message, "> ");
-        strcat(message, buffer);
-        flag = 0;
-        i = 0;
-        while (!flag && i < NB_WORKERS)       
+        char *receiver;
+        char *buffer;
+
+        strtok(ligne, " "); // Get rid of the command (/msg)
+        receiver = strtok(NULL, " ");
+        buffer = strtok(NULL, "\n");
+
+        printf("%s: sending '%s' to %s\n", CMD, buffer, receiver);
+
+        memset(private_message, '\0', LIGNE_MAX);
+        strcpy(private_message, "[private] ");
+        strcat(private_message, username);
+        strcat(private_message, "> ");
+        strcat(private_message, buffer);
+
+        for (int i = 0; i < NB_WORKERS; ++i)
         {
-          if (strncmp(dataSpec[i].username, receiver, LIGNE_MAX) == 0)
+          if (dataSpec[i].canal != -1 && dataSpec[i].username != username && dataSpec[i].room_id == room_id && strcmp(dataSpec[i].username, receiver) == 0)
           {
-            flag = 1;
+            if (ecrireLigne(dataSpec[i].canal, private_message) < 0)
+              erreur_IO("ecriture canal");
           }
-          i++;
-        }
-        i--;
-        if (flag)
-        {
-          if (ecrireLigne(dataSpec[i].canal, message) < 0)
-            erreur_IO("ecriture canal");
         }
       }
       else
@@ -367,7 +362,7 @@ void sessionClient(int canal, char *username, int room_id)
         char roomIndicator[MAX_ROOM_NAME + 5];
         sprintf(roomIndicator, "[%s] ", getChatRoomByID(room_id)->name);
 
-        strcpy(message, "");
+        memset(message, '\0', LIGNE_MAX);
         strcat(message, roomIndicator);
         strcat(message, username);
         strcat(message, "> ");
@@ -509,7 +504,7 @@ void extractMessage(char ligne[LIGNE_MAX], char buffer[LIGNE_MAX], char username
   c = ligne[i];
   //extract 'username'
   int j = 0;
-  while (c != space && c != '\0' && i < LIGNE_MAX) 
+  while (c != space && c != '\0' && i < LIGNE_MAX)
   {
     username[j] = c;
     i++;
