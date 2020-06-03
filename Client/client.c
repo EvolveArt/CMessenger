@@ -185,8 +185,6 @@ void sendUserAction(int fd, ACTION action, void *args)
 {
   printf("%s: User Action %d \n", CMD, action);
 
-  clearStdin();
-
   if (write(fd, &action, sizeof(action)) == -1)
     erreur_IO("ecriture socket");
 
@@ -202,15 +200,22 @@ void sendUserAction(int fd, ACTION action, void *args)
   {
     printf("Voici la liste des Chat Rooms : \n");
 
-    char room_name[LIGNE_MAX];
+    int fin = FAUX;
 
-    while (1)
+    while (!fin)
     {
+      char room_name[LIGNE_MAX];
+
+      printf("yo");
+
       if (read(fd, room_name, sizeof(room_name)) == -1)
         erreur_IO("lecture socket DISPLAY");
 
       if (strstr(room_name, "end_list") != NULL)
-        break;
+      {
+        fin = VRAI;
+        continue;
+      }
 
       printf("%s", room_name);
     }
