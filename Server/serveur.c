@@ -10,6 +10,7 @@ void creerCohorteWorkers(void);
 int chercherWorkerLibre(void);
 void *threadWorker(void *arg);
 int checkUsername(int canal, char *username);
+int checkPassword(int canal, char* username, char *password);
 int executeUserAction(DataSpec *_dataSpec);
 void sessionClient(int canal, char *username, int room_id);
 int ecrireDansJournal(char *ligne);
@@ -155,6 +156,7 @@ void *threadWorker(void *arg)
   DataSpec *dataSpec = (DataSpec *)arg;
   int ret;
   char username[LIGNE_MAX];
+  char password[LIGNE_MAX];
 
   while (VRAI)
   {
@@ -165,7 +167,7 @@ void *threadWorker(void *arg)
     printf("worker %d: reveil\n", dataSpec->tid);
 
     lockMutexUsername(dataSpec->tid);
-    if (checkUsername(dataSpec->canal, username) == 1)
+    if (checkUsername(dataSpec->canal, username) == 1 && checkPassword(dataSpec->canal, username, password) == 1)
     {
       strcpy(dataSpec->username, username);
       printf("serveur : user %s added\n", dataSpec->username);
@@ -206,7 +208,6 @@ void *threadWorker(void *arg)
 
 int checkUsername(int canal, char *username)
 {
-  int teststrcmp;
   int lgLue;
 
   lgLue = read(canal, username, sizeof(username));
@@ -215,7 +216,7 @@ int checkUsername(int canal, char *username)
 
   for (int i = 0; i < NB_WORKERS; ++i)
   {
-    if ((teststrcmp = strncmp(dataSpec[i].username, username, LIGNE_MAX)) == 0)
+    if (strncmp(dataSpec[i].username, username, LIGNE_MAX) == 0)
     {
       char *message = "username_already_used";
       if (write(canal, message, sizeof(message)) == -1)
@@ -228,6 +229,98 @@ int checkUsername(int canal, char *username)
   if (write(canal, username, sizeof(username)) == -1)
     erreur_IO("ecriture canal");
   return 1;
+}
+
+/*#include <openssl/sha.h>
+void hashToString(unsigned char *output, const char *hash)
+void hash256(unsigned char *output, const char *input)
+{
+  
+
+  char buffer[3];
+  char hex_hash[HASH_HEX_SIZE] = {0};
+
+  for(int i = 0; i < HASH_SIZE; i++)
+  {
+    memset(buffer, 0, sizeof(buffer));
+    sprintf(buffer,"%02x", hash_value[i]);
+    strcat(hex_hash, buffer);
+  }
+
+  strcpy(output,hex_hash);
+
+  output[HASH_HEX_SIZE] = 0;
+
+  //return output;
+}*/
+
+/* return 1 if password given match, otherwise 0*/
+int checkPassword(int canal, char *username, char *password)
+{
+  if (read(canal, password, sizeof(password)) == -1)
+    erreur_IO("lecture canal");
+  FILE* fpasswords;
+  fpasswords = fopen("passwords.txt", "r");
+  if (fpasswords == NULL)
+    erreur_IO("ouverture fichier passwords.txt");
+  char scanUsername[LIGNE_MAX];
+  char scanPassword[LIGNE_MAX];
+  int flag = 0;
+  while (!flag && (fscanf(fpasswords, "%s %s", scanUsername, scanPassword) == 2))
+  {
+    if (strncmp(scanUsername, username, LIGNE_MAX) == 0)
+    {
+      printf("%s %s\n", scanUsername, scanPassword);
+      flag = 1;
+    }
+  }
+  fclose(fpasswords);
+  if (flag)
+  {
+    /*unsigned char *hashAttempt = SHA256(attempt, LIGNE_MAX, 0);
+    char shashAttempt[HASH_HEX_SIZE];
+    hashToString(shashAttempt, hashAttempt);
+
+    unsigned char *hashScanPassword = SHA256(scanPassword, LIGNE_MAX, 0);
+
+    char shashScanPassword[HASH_HEX_SIZE];
+    hashToString(shashScanPassword, hashScanPassword);
+
+    if (strncmp(shashScanPassword, shashAttempt) == 0)
+    {
+      return 0;
+    }
+    else
+    {
+      
+    }
+    
+
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+      printf("%02x", hashAttempt[i]);
+    putchar('\n'); */
+    
+    if (strncmp(scanPassword, password, LIGNE_MAX) == 0)
+    {
+      write(canal, password, sizeof(password));
+      return 1;
+    }
+    char *message = "incorrect_password";
+    write(canal, message, sizeof(message));
+  }
+  else // creation of an account (new user)
+  {
+    printf("création d'un nouveau compte\n");
+    fpasswords = fopen("passwords.txt", "a");
+    fprintf(fpasswords, "\n");
+    fprintf(fpasswords, "%s %s", username, password);
+    fclose(fpasswords);
+    write(canal, password, sizeof(password));
+    return 1;
+  }
+  
+
+	return 0;
 }
 
 int executeUserAction(DataSpec *_dataSpec)
@@ -348,7 +441,7 @@ void sessionClient(int canal, char *username, int room_id)
       {
         for (int i = 0; i < NB_WORKERS; ++i)
         {
-          if (dataSpec[i].canal != -1 && strcmp(dataSpec[i].username, username) == 0)
+          if (dataSpec[i].canal != -1 && strncmp(dataSpec[i].username, username, LIGNE_MAX) == 0)
           {
             executeUserAction(&dataSpec[i]);
           }
