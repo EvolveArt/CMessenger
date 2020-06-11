@@ -23,37 +23,42 @@ contributors: "HALLGREN Matthias & MASTRANGELO Julien"
 $ git clone https://github.com/EvolveArt/CMessenger.git
 ```
 
-2. Compiler la librairie :
+2. Installer la librairie openssl si non installée : 
+```
+$ sudo apt-get install libssl-dev
+```
+
+3. Compiler la librairie :
 
 ```
 $ cd modules
 $ make
 ```
 
-3. Compiler les programmes Client et Serveur :
+4. Compiler les programmes Client et Serveur :
 
 ```
 $ make
 ```
 
-4. Lancer le serveur :
+5. Lancer le serveur :
 
 ```
 $ cd Server
 $ ./serveur 5000
 ```
 
-5. Lancer un client :
+6. Lancer un client :
 
 ```
 $ cd Client
 $ ./client localhost 5000 matthias
 ```
 
-6. Lancer autant de clients que souhaité :
+7. Lancer autant de clients que souhaité :
 
 ```
-Répéter l'étape n°5
+Répéter l'étape n°6
 ```
 
 ### Objectif du projet
