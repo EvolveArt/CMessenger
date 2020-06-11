@@ -72,10 +72,10 @@ Le client et le serveur communiquent avec des *sockets* TCP/IP.
 | Création d'une nouvelle Chat Room              | ✅      |
 | Rejoindre une Chat Room existante              | ✅      |
 | Le pseudo choisi est unique                    | ✅      |
-| Quitter une Chat Room                          | ❌      |
-| Voir les personnes présentes dans la Chat Room | ✅      |
-| Envoyer des messages privés                    | ✅      |
-| Système d'authentification                     | ❌      |
+| Quitter une Chat Room                          | ❌     |
+| Voir les personnes présentes dans la Chat Room (/list) | ✅      |
+| Envoyer des messages privés (/msg)                   | ✅      |
+| Système d'authentification                     | ✅      |
 | Log des messages dans `journal.log`            | ✅      |
 
 
