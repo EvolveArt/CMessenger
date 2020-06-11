@@ -4,7 +4,7 @@
 #define CMD "client"
 
 void sendUsername(int fd, char *username);
-void sendPassword(int fd, char* password);
+void sendPassword(int fd, char *password);
 void sendUserAction(int fd, ACTION action, void *args);
 
 void *receiveMessage(void *arg);
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     sendPassword(sock, password);
     if (strncmp(password, argv[4], LIGNE_MAX) != 0)
       printf("Password incorrect\n");
-    else 
+    else
     {
       mainMenu();
 
@@ -191,7 +191,7 @@ void sendPassword(int fd, char *password)
 {
   if (write(fd, password, sizeof(password)) == -1)
     erreur_IO("écriture socket");
-  
+
   if (read(fd, password, sizeof(password)) == -1)
     erreur_IO("lecture socket");
 }
@@ -220,8 +220,6 @@ void sendUserAction(int fd, ACTION action, void *args)
     while (!fin)
     {
       char room_name[LIGNE_MAX];
-
-      printf("yo");
 
       if (read(fd, room_name, sizeof(room_name)) == -1)
         erreur_IO("lecture socket DISPLAY");
