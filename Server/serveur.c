@@ -8,10 +8,10 @@
 
 void creerCohorteWorkers(void); //initialise les threads (workers) et les sémaphores associés
 int chercherWorkerLibre(void);
-void *threadWorker(void *arg); 
-int checkUsername(int canal, char *username); // check if this client's username is already connected
-int checkPassword(int canal, char* username, unsigned char *password); // check if the client's password fits with the username
-int executeUserAction(DataSpec *_dataSpec); // so the client can create/join a room
+void *threadWorker(void *arg);
+int checkUsername(int canal, char *username);                          // check if this client's username is already connected
+int checkPassword(int canal, char *username, unsigned char *password); // check if the client's password fits with the username
+int executeUserAction(DataSpec *_dataSpec);                            // so the client can create/join a room
 void sessionClient(int canal, char *username, int room_id);
 int ecrireDansJournal(char *ligne);
 void remiseAZeroJournal(void);
@@ -171,9 +171,12 @@ void *threadWorker(void *arg)
       strcpy(dataSpec->username, username);
       printf("serveur : user %s added\n", dataSpec->username);
 
+      int ret;
+
       while (1)
       {
-        int ret = executeUserAction(dataSpec);
+        ret = executeUserAction(dataSpec);
+        printf("user action returned : %d\n", ret);
         if (ret == 1 || ret == 2)
           break;
 
@@ -236,13 +239,13 @@ int checkPassword(int canal, char *username, unsigned char *password)
 {
   if (read(canal, password, sizeof(password)) == -1)
     erreur_IO("lecture canal");
-  FILE* fpasswords;
+  FILE *fpasswords;
   fpasswords = fopen("passwords.txt", "r");
   if (fpasswords == NULL)
     erreur_IO("ouverture fichier passwords.txt");
   char scanUsername[LIGNE_MAX];
   char scanHashPassword[LIGNE_MAX];
-  
+
   unsigned char *hashPassword = SHA256(password, LIGNE_MAX, 0);
   char sHashPassword[HASH_HEX_SIZE];
   hashToString(sHashPassword, hashPassword);
@@ -258,7 +261,7 @@ int checkPassword(int canal, char *username, unsigned char *password)
   fclose(fpasswords);
   if (flag)
   {
-    
+
     if (strncmp(sHashPassword, scanHashPassword, LIGNE_MAX) == 0)
     {
       write(canal, password, sizeof(password));
@@ -281,7 +284,7 @@ int checkPassword(int canal, char *username, unsigned char *password)
     return 1;
   }
 
-	return 0;
+  return 0;
 }
 
 int executeUserAction(DataSpec *_dataSpec)
