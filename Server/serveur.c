@@ -6,11 +6,12 @@
 
 #define NB_WORKERS 9
 
-void creerCohorteWorkers(void);
+void creerCohorteWorkers(void); //initialise les threads (workers) et les sémaphores associés
 int chercherWorkerLibre(void);
 void *threadWorker(void *arg);
-int checkUsername(int canal, char *username);
-int executeUserAction(DataSpec *_dataSpec);
+int checkUsername(int canal, char *username);                          // check if this client's username is already connected
+int checkPassword(int canal, char *username, unsigned char *password); // check if the client's password fits with the username
+int executeUserAction(DataSpec *_dataSpec);                            // so the client can create/join a room
 void sessionClient(int canal, char *username, int room_id);
 int ecrireDansJournal(char *ligne);
 void remiseAZeroJournal(void);
@@ -23,10 +24,11 @@ void unlockMutexUsername(int numWorker);
 void lockMutexRoomID(int numWorker);
 void unlockMutexRoomID(int numWorker);
 
+void serializeChatroom(int _canal, ChatRoom *source);
+
 int fdJournal;
 DataSpec dataSpec[NB_WORKERS];
 sem_t semWorkersLibres;
-// ChatRooms *chatroomsList;
 
 // mutex pour acces concurrent au descripteur du fichier journal et au canal de
 // chaque worker
@@ -153,6 +155,7 @@ void *threadWorker(void *arg)
   DataSpec *dataSpec = (DataSpec *)arg;
   int ret;
   char username[LIGNE_MAX];
+  unsigned char password[LIGNE_MAX];
 
   while (VRAI)
   {
@@ -163,21 +166,25 @@ void *threadWorker(void *arg)
     printf("worker %d: reveil\n", dataSpec->tid);
 
     lockMutexUsername(dataSpec->tid);
-    if (checkUsername(dataSpec->canal, username) == 1)
+    if (checkUsername(dataSpec->canal, username) == 1 && checkPassword(dataSpec->canal, username, password) == 1)
     {
       strcpy(dataSpec->username, username);
       printf("serveur : user %s added\n", dataSpec->username);
 
+      int ret;
+
       while (1)
       {
-        int ret = executeUserAction(dataSpec);
-        if (ret == 1)
+        ret = executeUserAction(dataSpec);
+        printf("user action returned : %d\n", ret);
+        if (ret == 1 || ret == 2)
           break;
 
         sleep(1);
       }
 
-      sessionClient(dataSpec->canal, dataSpec->username, dataSpec->room_id);
+      if (ret == 1)
+        sessionClient(dataSpec->canal, dataSpec->username, dataSpec->room_id);
 
       strcpy(dataSpec->username, ""); //libération du username une fois que le client est parti
     }
@@ -204,7 +211,6 @@ void *threadWorker(void *arg)
 
 int checkUsername(int canal, char *username)
 {
-  int teststrcmp;
   int lgLue;
 
   lgLue = read(canal, username, sizeof(username));
@@ -213,7 +219,7 @@ int checkUsername(int canal, char *username)
 
   for (int i = 0; i < NB_WORKERS; ++i)
   {
-    if ((teststrcmp = strncmp(dataSpec[i].username, username, LIGNE_MAX)) == 0)
+    if (strncmp(dataSpec[i].username, username, LIGNE_MAX) == 0)
     {
       char *message = "username_already_used";
       if (write(canal, message, sizeof(message)) == -1)
@@ -228,13 +234,67 @@ int checkUsername(int canal, char *username)
   return 1;
 }
 
+/* return 1 if password given match or if it is a new user (creation of an account), otherwise 0*/
+int checkPassword(int canal, char *username, unsigned char *password)
+{
+  if (read(canal, password, sizeof(password)) == -1)
+    erreur_IO("lecture canal");
+  FILE *fpasswords;
+  fpasswords = fopen("passwords.txt", "r");
+  if (fpasswords == NULL)
+    erreur_IO("ouverture fichier passwords.txt");
+  char scanUsername[LIGNE_MAX];
+  char scanHashPassword[LIGNE_MAX];
+
+  unsigned char *hashPassword = SHA256(password, LIGNE_MAX, 0);
+  char sHashPassword[HASH_HEX_SIZE];
+  hashToString(sHashPassword, hashPassword);
+
+  int flag = 0;
+  while (!flag && (fscanf(fpasswords, "%s %s", scanUsername, scanHashPassword) == 2))
+  {
+    if (strncmp(scanUsername, username, LIGNE_MAX) == 0)
+    {
+      flag = 1;
+    }
+  }
+  fclose(fpasswords);
+  if (flag)
+  {
+
+    if (strncmp(sHashPassword, scanHashPassword, LIGNE_MAX) == 0)
+    {
+      write(canal, password, sizeof(password));
+      return 1;
+    }
+    char *message = "incorrect_password";
+    write(canal, message, sizeof(message));
+    /*for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+      printf("%02x", hashAttempt[i]);
+    putchar('\n'); */
+  }
+  else // creation of an account (new user)
+  {
+    printf("%s : Creation of %s's account\n", CMD, username);
+    fpasswords = fopen("passwords.txt", "a");
+    fprintf(fpasswords, "%s %s", username, sHashPassword);
+    fprintf(fpasswords, "\n");
+    fclose(fpasswords);
+    write(canal, password, sizeof(password));
+    return 1;
+  }
+
+  return 0;
+}
+
 int executeUserAction(DataSpec *_dataSpec)
 {
 
   ACTION userAction;
   if (read(_dataSpec->canal, &userAction, sizeof(ACTION)) == -1)
     erreur_IO("lecture canal user action");
-
+  if (userAction == LEAVE) // 16 Ctrl+C (le client a quitté le programme)
+    return 2;
   printf("%s: Exécution d'une User Action (%d)\n", CMD, userAction);
 
   ChatRoom *chatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
@@ -249,8 +309,10 @@ int executeUserAction(DataSpec *_dataSpec)
 
     chatroom = addNewChatRoom(name);
 
-    if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
-      erreur_IO("ecriture canal server chatroom");
+    // if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
+    // erreur_IO("ecriture canal server chatroom");
+
+    serializeChatroom(_dataSpec->canal, chatroom);
 
     return 0;
   }
@@ -266,8 +328,10 @@ int executeUserAction(DataSpec *_dataSpec)
 
     chatroom = joinChatRoom(room_id);
 
-    if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
-      erreur_IO("ecriture canal");
+    // if (write(_dataSpec->canal, chatroom, sizeof(chatroom)) == -1)
+    // erreur_IO("ecriture canal");
+
+    serializeChatroom(_dataSpec->canal, chatroom);
 
     if (chatroom->room_id == -1)
       return 0;
@@ -297,12 +361,28 @@ int executeUserAction(DataSpec *_dataSpec)
   return 0;
 }
 
+void serializeChatroom(int _canal, ChatRoom *source)
+{
+
+  if (write(_canal, source->name, sizeof(source->name)) == -1)
+    erreur_IO("ecriture canal");
+
+  if (write(_canal, &(source->room_id), sizeof(source->room_id)) == -1)
+    erreur_IO("ecriture canal");
+
+  if (write(_canal, &(source->nbr_clients), sizeof(source->nbr_clients)) == -1)
+    erreur_IO("ecriture canal");
+}
+
 void sessionClient(int canal, char *username, int room_id)
 {
   int fin = FAUX;
+
   char ligne[LIGNE_MAX];
   char message[LIGNE_MAX] = "";
   int lgLue, lgEcr;
+
+  char private_message[LIGNE_MAX] = "";
 
   while (!fin)
   {
@@ -317,22 +397,61 @@ void sessionClient(int canal, char *username, int room_id)
     }
     else
     { // lgLue > 0
-      if (strcmp(ligne, "fin") == 0)
+      if (strncmp(ligne, "/fin", LIGNE_MAX) == 0)
       {
         fin = VRAI;
         printf("%s: fin session %s\n", CMD, username);
       }
-      else if (strcmp(ligne, "init") == 0)
+      else if (strncmp(ligne, "/list", LIGNE_MAX) == 0)
+      {
+        for (int i = 0; i < NB_WORKERS; ++i)
+        {
+          if (dataSpec[i].canal != -1 && strncmp(dataSpec[i].username, username, LIGNE_MAX) == 0)
+          {
+            executeUserAction(&dataSpec[i]);
+          }
+        }
+      }
+      else if (strncmp(ligne, "/init", LIGNE_MAX) == 0)
       {
         remiseAZeroJournal();
         printf("%s: remise a zero du journal par %s\n", CMD, username);
+      }
+      else if (strncmp(ligne, "/msg", 4) == 0)
+      {
+        char *receiver;
+        char *buffer;
+
+        strtok(ligne, " "); // Get rid of the command (/msg)
+        receiver = strtok(NULL, " ");
+        buffer = strtok(NULL, "\n");
+
+        if (!receiver || !buffer)
+          continue;
+
+        printf("%s: sending '%s' to %s from %s\n", CMD, buffer, receiver, username);
+
+        memset(private_message, '\0', LIGNE_MAX);
+        strcpy(private_message, "[private] ");
+        strcat(private_message, username);
+        strcat(private_message, "> ");
+        strcat(private_message, buffer);
+
+        for (int i = 0; i < NB_WORKERS; ++i)
+        {
+          if (dataSpec[i].canal != -1 && dataSpec[i].username != username && dataSpec[i].room_id == room_id && strcmp(dataSpec[i].username, receiver) == 0)
+          {
+            if (ecrireLigne(dataSpec[i].canal, private_message) < 0)
+              erreur_IO("ecriture canal");
+          }
+        }
       }
       else
       {
         char roomIndicator[MAX_ROOM_NAME + 5];
         sprintf(roomIndicator, "[%s] ", getChatRoomByID(room_id)->name);
 
-        strcpy(message, "");
+        memset(message, '\0', LIGNE_MAX);
         strcat(message, roomIndicator);
         strcat(message, username);
         strcat(message, "> ");

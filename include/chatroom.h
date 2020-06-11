@@ -1,7 +1,7 @@
 #ifndef CHATROOM_INCLUDE_H
 #define CHATROOM_INCLUDE_H
 
-#define MAX_ROOM_NAME 50
+#define MAX_ROOM_NAME 100
 
 /**
 * Structure for a chat room
@@ -52,7 +52,8 @@ typedef enum _ACTION
 {
     CREATE = 0x00,
     JOIN = 0x01,
-    DISPLAY = 0x02
+    DISPLAY = 0x02,
+    LEAVE = 0x10
 } ACTION;
 
 #endif
