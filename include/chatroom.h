@@ -52,7 +52,8 @@ typedef enum _ACTION
 {
     CREATE = 0x00,
     JOIN = 0x01,
-    DISPLAY = 0x02
+    DISPLAY = 0x02,
+    LEAVE = 0x10
 } ACTION;
 
 #endif

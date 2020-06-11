@@ -229,14 +229,9 @@ void sendUserAction(int fd, ACTION action, void *args)
 
       printf("%s", room_name);
     }
-    //if (read(fd, _chatroomsList, sizeof(_chatroomsList)) == -1)
-    //erreur_IO("lecture socket DISPLAY");
   }
   else
   {
-    // if (read(_fd, currentChatroom, sizeof(currentChatroom)) == -1)
-    //   erreur_IO("lecture socket ACTION");
-
     deserializeChatroom(fd, currentChatroom);
   }
 }

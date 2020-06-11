@@ -174,13 +174,14 @@ void *threadWorker(void *arg)
       while (1)
       {
         int ret = executeUserAction(dataSpec);
-        if (ret == 1)
+        if (ret == 1 || ret == 2)
           break;
 
         sleep(1);
       }
 
-      sessionClient(dataSpec->canal, dataSpec->username, dataSpec->room_id);
+      if (ret == 1)
+        sessionClient(dataSpec->canal, dataSpec->username, dataSpec->room_id);
 
       strcpy(dataSpec->username, ""); //libération du username une fois que le client est parti
     }
@@ -241,6 +242,11 @@ int checkPassword(int canal, char *username, unsigned char *password)
     erreur_IO("ouverture fichier passwords.txt");
   char scanUsername[LIGNE_MAX];
   char scanHashPassword[LIGNE_MAX];
+  
+  unsigned char *hashPassword = SHA256(password, LIGNE_MAX, 0);
+  char sHashPassword[HASH_HEX_SIZE];
+  hashToString(sHashPassword, hashPassword);
+
   int flag = 0;
   while (!flag && (fscanf(fpasswords, "%s %s", scanUsername, scanHashPassword) == 2))
   {
@@ -252,11 +258,8 @@ int checkPassword(int canal, char *username, unsigned char *password)
   fclose(fpasswords);
   if (flag)
   {
-    unsigned char *hashPassword = SHA256(password, LIGNE_MAX, 0);
-    char sHashPassword[HASH_HEX_SIZE];
-    hashToString(sHashPassword, hashPassword);
-
-    if (memcmp(sHashPassword, scanHashPassword, LIGNE_MAX) == 0)
+    
+    if (strncmp(sHashPassword, scanHashPassword, LIGNE_MAX) == 0)
     {
       write(canal, password, sizeof(password));
       return 1;
@@ -271,8 +274,8 @@ int checkPassword(int canal, char *username, unsigned char *password)
   {
     printf("%s : Creation of %s's account\n", CMD, username);
     fpasswords = fopen("passwords.txt", "a");
+    fprintf(fpasswords, "%s %s", username, sHashPassword);
     fprintf(fpasswords, "\n");
-    fprintf(fpasswords, "%s %s", username, password);
     fclose(fpasswords);
     write(canal, password, sizeof(password));
     return 1;
@@ -287,7 +290,8 @@ int executeUserAction(DataSpec *_dataSpec)
   ACTION userAction;
   if (read(_dataSpec->canal, &userAction, sizeof(ACTION)) == -1)
     erreur_IO("lecture canal user action");
-
+  if (userAction == LEAVE) // 16 Ctrl+C (le client a quitté le programme)
+    return 2;
   printf("%s: Exécution d'une User Action (%d)\n", CMD, userAction);
 
   ChatRoom *chatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
