@@ -4,6 +4,7 @@
 #define CMD "client"
 
 void sendUsername(int fd, char *username);
+void sendPassword(int fd, char* password);
 void sendUserAction(int fd, ACTION action, void *args);
 
 void *receiveMessage(void *arg);
@@ -24,6 +25,7 @@ int main(int argc, char *argv[])
   int fin = FAUX;
   char ligne[LIGNE_MAX];
   char username[LIGNE_MAX];
+  char password[LIGNE_MAX];
   pthread_t idThreadReceive; // thread qui gère la réception de messages des autres clients
 
   currentChatroom = (ChatRoom *)malloc(sizeof(ChatRoom));
@@ -31,10 +33,8 @@ int main(int argc, char *argv[])
 
   signal(SIGPIPE, SIG_IGN);
 
-  if (argc != 4)
-    erreur("usage: %s machine port username\n", argv[0]);
-
-  strcpy(username, argv[3]);
+  if (argc != 5)
+    erreur("usage: %s machine port username password\n", argv[0]);
 
   printf("%s: creating a socket\n", CMD);
   sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -55,40 +55,46 @@ int main(int argc, char *argv[])
   if (ret < 0)
     erreur_IO("connect");
 
+  strcpy(username, argv[3]);
   sendUsername(sock, username);
   if (strncmp(username, argv[3], LIGNE_MAX) != 0)
-  {
     printf("%s already used.\n", argv[3]);
-  }
   else
   {
-    mainMenu();
-
-    system("clear");
-    printf("--- ChatRoom n°%d : %s --- \n", currentChatroom->room_id, currentChatroom->name);
-
-    // réception des messages
-    pthread_create(&idThreadReceive, NULL, receiveMessage, NULL);
-    //envoi des messages
-    while (!fin)
+    strcpy(password, argv[4]);
+    sendPassword(sock, password);
+    if (strncmp(password, argv[4], LIGNE_MAX) != 0)
+      printf("Password incorrect\n");
+    else 
     {
-      printf("> ");
-      if (fgets(ligne, LIGNE_MAX, stdin) == NULL)
-        // sortie par CTRL-D
-        fin = VRAI;
-      else
+      mainMenu();
+
+      system("clear");
+      printf("--- ChatRoom n°%d : %s --- \n", currentChatroom->room_id, currentChatroom->name);
+
+      // réception des messages
+      pthread_create(&idThreadReceive, NULL, receiveMessage, NULL);
+      //envoi des messages
+      while (!fin)
       {
-
-        if (ecrireLigne(sock, ligne) == -1)
-          erreur_IO("ecriture socket");
-
-        if (strncmp(ligne, "/list\n", LIGNE_MAX) == 0)
-        {
-          sendUserAction(sock, DISPLAY, NULL);
-        }
-
-        if (strncmp(ligne, "/fin\n", LIGNE_MAX) == 0)
+        printf("> ");
+        if (fgets(ligne, LIGNE_MAX, stdin) == NULL)
+          // sortie par CTRL-D
           fin = VRAI;
+        else
+        {
+
+          if (ecrireLigne(sock, ligne) == -1)
+            erreur_IO("ecriture socket");
+
+          if (strncmp(ligne, "/list\n", LIGNE_MAX) == 0)
+          {
+            sendUserAction(sock, DISPLAY, NULL);
+          }
+
+          if (strncmp(ligne, "/fin\n", LIGNE_MAX) == 0)
+            fin = VRAI;
+        }
       }
     }
   }
@@ -181,6 +187,15 @@ void sendUsername(int fd, char *username)
     erreur_IO("lecture socket");
 }
 
+void sendPassword(int fd, char *password)
+{
+  if (write(fd, password, sizeof(password)) == -1)
+    erreur_IO("écriture socket");
+  
+  if (read(fd, password, sizeof(password)) == -1)
+    erreur_IO("lecture socket");
+}
+
 void sendUserAction(int fd, ACTION action, void *args)
 {
   printf("%s: User Action %d \n", CMD, action);
@@ -219,14 +234,9 @@ void sendUserAction(int fd, ACTION action, void *args)
 
       printf("%s", room_name);
     }
-    //if (read(fd, _chatroomsList, sizeof(_chatroomsList)) == -1)
-    //erreur_IO("lecture socket DISPLAY");
   }
   else
   {
-    // if (read(_fd, currentChatroom, sizeof(currentChatroom)) == -1)
-    //   erreur_IO("lecture socket ACTION");
-
     deserializeChatroom(fd, currentChatroom);
   }
 }

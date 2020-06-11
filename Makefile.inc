@@ -5,8 +5,8 @@ PSE_BIN = ${PSE_DIR}/bin
 PSE_LIB = ${PSE_DIR}/lib
 PSE_INCL_DIR = ${PSE_DIR}/include
 
-CFLAGS = -g -I. -I${PSE_INCL_DIR} -Wall 
+CFLAGS = -g -I. -I${PSE_INCL_DIR} -Wall
 		
-LDLIBS = -L${PSE_LIB} -lpse -lm -pthread
+LDLIBS = -L${PSE_LIB} -lpse -lm -pthread -lssl -lcrypto
 
 CC = gcc

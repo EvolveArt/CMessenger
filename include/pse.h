@@ -21,6 +21,7 @@
 #include <netdb.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <openssl/sha.h>
 
 #include "erreur.h"
 #include "ligne.h"
@@ -29,6 +30,7 @@
 #include "msgbox.h"
 #include "msg.h"
 #include "chatroom.h"
+#include "crypto.h"
 
 #define FAUX	0
 #define VRAI	1
