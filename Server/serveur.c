@@ -45,7 +45,10 @@ int main(int argc, char *argv[])
   unsigned int lgAdrClient;
   int numWorkerLibre;
 
+  char *globalChatroom = "CMessenger Global";
+
   initChatRooms();
+  addNewChatRoom(globalChatroom);
 
   if (argc != 2)
     erreur("usage: %s port\n", argv[0]);
