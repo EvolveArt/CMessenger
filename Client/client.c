@@ -91,9 +91,16 @@ int main(int argc, char *argv[])
           if (ecrireLigne(sock, ligne) == -1)
             erreur_IO("ecriture socket");
 
+          char *lireChatRoom = "";
+          char *messageFin = "end_list";
           if (strncmp(ligne, "/list\n", LIGNE_MAX) == 0)
           {
-            sendUserAction(sock, DISPLAY, NULL);
+            //sendUserAction(sock, DISPLAY, NULL);
+            while (strncmp(lireChatRoom, messageFin, LIGNE_MAX) == 0)
+            {
+              lireLigne(sock, lireChatRoom);
+              printf("%s", lireChatRoom);
+            }
           }
 
           if (strncmp(ligne, "/fin\n", LIGNE_MAX) == 0)

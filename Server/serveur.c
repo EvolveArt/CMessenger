@@ -44,8 +44,11 @@ int main(int argc, char *argv[])
   struct sockaddr_in adrEcoute, adrClient;
   unsigned int lgAdrClient;
   int numWorkerLibre;
-
+  char *nameChatroomInit = "CMessenger global";
   initChatRooms();
+  ChatRoom *chatroomInit = (ChatRoom *) malloc(sizeof(ChatRoom));
+
+  chatroomInit = addNewChatRoom(nameChatroomInit);
 
   if (argc != 2)
     erreur("usage: %s port\n", argv[0]);
@@ -423,13 +426,7 @@ void sessionClient(int canal, char *username, int room_id)
       }
       else if (strncmp(ligne, "/list", LIGNE_MAX) == 0)
       {
-        for (int i = 0; i < NB_WORKERS; ++i)
-        {
-          if (dataSpec[i].canal != -1 && strncmp(dataSpec[i].username, username, LIGNE_MAX) == 0)
-          {
-            executeUserAction(&dataSpec[i]);
-          }
-        }
+        printChatRoomList(canal);
       }
       else if (strncmp(ligne, "/init", LIGNE_MAX) == 0)
       {
