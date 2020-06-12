@@ -55,12 +55,14 @@ int main(int argc, char *argv[])
   if (ret < 0)
     erreur_IO("connect");
 
+  // Récupération du pseudo
   strcpy(username, argv[3]);
   sendUsername(sock, username);
   if (strncmp(username, argv[3], LIGNE_MAX) != 0)
     printf("%s already used.\n", argv[3]);
   else
   {
+    // Récupération du mot de passe
     strcpy(password, argv[4]);
     sendPassword(sock, password);
     if (strncmp(password, argv[4], LIGNE_MAX) != 0)
@@ -68,6 +70,8 @@ int main(int argc, char *argv[])
     else
     {
       mainMenu();
+
+      // Sortie du menu principal
 
       system("clear");
       printf("--- ChatRoom n°%d : %s --- \n", currentChatroom->room_id, currentChatroom->name);
@@ -105,6 +109,11 @@ int main(int argc, char *argv[])
   exit(EXIT_SUCCESS);
 }
 
+/**
+ *  Menu Principal 
+ *  - Création d'une nouvelle chatroom
+ *  - Rejoindre une chatroom existante
+ * */
 void mainMenu()
 {
   char room_name[MAX_ROOM_NAME];
@@ -157,6 +166,9 @@ void mainMenu()
   }
 }
 
+/**
+ * Fonction utilitaire pour retirer les espaces d'une chaine de caractères
+ * */
 void str_trim_lf(char *arr, int length)
 {
   int i;
@@ -170,6 +182,9 @@ void str_trim_lf(char *arr, int length)
   }
 }
 
+/**
+ * Fonction utilitaire pour vider le buffer stdin
+ * */
 static void clearStdin()
 {
   int c;
@@ -196,6 +211,14 @@ void sendPassword(int fd, char *password)
     erreur_IO("lecture socket");
 }
 
+/**
+ * Envoi d'une action utilisateur au serveur
+ * @params 
+ *  - fd : socket de connection au serveur
+ *  - action : action à éxecuter
+ *  - args : arguments à envoyer avec l'Action
+ * @return void
+ * */
 void sendUserAction(int fd, ACTION action, void *args)
 {
   printf("%s: User Action %d \n", CMD, action);
@@ -239,6 +262,9 @@ void sendUserAction(int fd, ACTION action, void *args)
   }
 }
 
+/**
+ * Fonction du thread affichant les messages des autres clients sur le client actuel
+ * */
 void *receiveMessage(void *arg)
 {
   char ligne[LIGNE_MAX];
@@ -251,6 +277,12 @@ void *receiveMessage(void *arg)
   }
 }
 
+/**
+ * Fonction utilisée pour la déserialisation d'un object de type <struct ChatRoom>
+ * @params :
+ *  - _fd : socket de connection
+ *  - destination : <struct ChatRoom> à récupérer depuis le canal _fd
+ * */
 void deserializeChatroom(int _fd, ChatRoom *destination)
 {
 

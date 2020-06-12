@@ -167,16 +167,17 @@ void *threadWorker(void *arg)
 
     lockMutexUsername(dataSpec->tid);
     if (checkUsername(dataSpec->canal, username) == 1 && checkPassword(dataSpec->canal, username, password) == 1)
-    {
+    { // Si les identifiants sont corrects, on connecte le client
       strcpy(dataSpec->username, username);
       printf("serveur : user %s added\n", dataSpec->username);
 
       int ret;
 
+      // Attente des actions utilisateurs (menu principal)
       while (1)
       {
         ret = executeUserAction(dataSpec);
-        printf("user action returned : %d\n", ret);
+        // printf("user action returned : %d\n", ret);
         if (ret == 1 || ret == 2)
           break;
 
@@ -209,6 +210,10 @@ void *threadWorker(void *arg)
   pthread_exit(NULL);
 }
 
+/**
+ * Vérification du pseudo du client
+ * @return 0 si déjà utilisé, 1 si OK
+ * */
 int checkUsername(int canal, char *username)
 {
   int lgLue;
@@ -287,6 +292,14 @@ int checkPassword(int canal, char *username, unsigned char *password)
   return 0;
 }
 
+/**
+ * Récéption et éxécution d'une action client
+ * @params _dataSpec : <struct DataSpec> session client
+ * @return 
+ *  - 0 : l'action ne permet pas de quitter le menu
+ *  - 1 : l'action permet de démarrer la session client
+ *  - 2 : l'action permet de quitter le menu sans lancer de session client
+ * */
 int executeUserAction(DataSpec *_dataSpec)
 {
 
@@ -361,6 +374,12 @@ int executeUserAction(DataSpec *_dataSpec)
   return 0;
 }
 
+/**
+ * Fonction utilisée pour la sérialisation d'un object de type <struct ChatRoom>
+ * @params :
+ *  - _canal : socket de connection avec le client
+ *  - source : <struct ChatRoom> à envoyer sur le canal _canal
+ * */
 void serializeChatroom(int _canal, ChatRoom *source)
 {
 
@@ -418,7 +437,7 @@ void sessionClient(int canal, char *username, int room_id)
         printf("%s: remise a zero du journal par %s\n", CMD, username);
       }
       else if (strncmp(ligne, "/msg", 4) == 0)
-      {
+      { // Envoi de messages privés
         char *receiver;
         char *buffer;
 
@@ -441,6 +460,7 @@ void sessionClient(int canal, char *username, int room_id)
         {
           if (dataSpec[i].canal != -1 && dataSpec[i].username != username && dataSpec[i].room_id == room_id && strcmp(dataSpec[i].username, receiver) == 0)
           {
+            // Envoi du message privé au client de pseudo == receiver
             if (ecrireLigne(dataSpec[i].canal, private_message) < 0)
               erreur_IO("ecriture canal");
           }
@@ -448,6 +468,8 @@ void sessionClient(int canal, char *username, int room_id)
       }
       else
       {
+        // Ecriture d'un message dans la room du client
+
         char roomIndicator[MAX_ROOM_NAME + 5];
         sprintf(roomIndicator, "[%s] ", getChatRoomByID(room_id)->name);
 
@@ -456,6 +478,7 @@ void sessionClient(int canal, char *username, int room_id)
         strcat(message, username);
         strcat(message, "> ");
         strcat(message, ligne);
+
         printf("%s\n", message);
         lgEcr = ecrireLigne(fdJournal, message);
         if (lgEcr < 0)
@@ -474,6 +497,7 @@ void sessionClient(int canal, char *username, int room_id)
     }
   }
 
+  // On actualise le nombre de clients de la room lorsque le client la quitte
   getChatRoomByID(room_id)->nbr_clients--;
 
   if (close(canal) == -1)
